@@ -117,6 +117,20 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
+  // 세션 복원 시 활성 카테고리 탭이 보이도록 스크롤
+  useEffect(() => {
+    if (activeCategory === "전체") return;
+    const el = tabsScrollRef.current;
+    if (!el) return;
+    const activeBtn = el.querySelector(`button[data-cat="${activeCategory}"]`);
+    if (activeBtn) {
+      requestAnimationFrame(() => {
+        activeBtn.scrollIntoView({ behavior: "instant", block: "nearest", inline: "center" });
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // 드롭다운 외부 클릭 시 닫기
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -477,6 +491,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
             return (
               <button
                 key={cat}
+                data-cat={cat}
                 onClick={(e) => {
                   setActiveCategory(cat);
                   e.currentTarget.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
@@ -494,6 +509,8 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
                 className={`flex-shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border-none cursor-pointer ${
                   activeCategory === cat
                     ? categoryActiveStyle[cat] || "bg-amber-500 text-white shadow-lg shadow-amber-500/25"
+                    : count === 0
+                    ? "bg-white dark:bg-gray-900 text-gray-300 dark:text-gray-700 border border-gray-100 dark:border-gray-800 shadow-sm opacity-50"
                     : "bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 border border-gray-100 dark:border-gray-800 shadow-sm"
                 }`}
               >
@@ -564,13 +581,24 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
               ? "다른 키워드로 검색하거나 필터를 바꿔보세요"
               : "다른 카테고리를 선택하거나 마감 포함 보기를 켜보세요"}
           </p>
-          <div className="flex items-center justify-center gap-3 mt-5">
+          <div className="flex items-center justify-center gap-3 mt-5 flex-wrap">
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
                 className="text-sm text-amber-600 dark:text-amber-400 hover:underline bg-transparent border-none cursor-pointer font-semibold"
               >
                 검색어 초기화
+              </button>
+            )}
+            {searchQuery && activeCategory !== "전체" && (
+              <button
+                onClick={() => setActiveCategory("전체")}
+                className="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 bg-transparent border-none cursor-pointer font-medium transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+                전체 카테고리에서 검색
               </button>
             )}
             {showBookmarkedOnly && (
