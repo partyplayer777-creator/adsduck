@@ -349,7 +349,7 @@ export default function ContestDetail({ contest, contests = [], onBack, onSelect
 
           {/* Mobile sticky CTA */}
           {!isExpired && (
-            <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-100 dark:border-gray-800">
+            <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pt-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-100 dark:border-gray-800" style={{ paddingBottom: "max(24px, env(safe-area-inset-bottom))" }}>
               <a
                 href={contest.notionLink}
                 target="_blank"

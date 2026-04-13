@@ -250,7 +250,8 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
               — D-3 이내 마감
             </span>
           </div>
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+          <div className="relative">
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
             {urgentContests.map((contest) => {
               const daysLeft = Math.ceil((new Date(contest.deadline) - now) / (1000 * 60 * 60 * 24));
               return (
@@ -276,6 +277,9 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
                 </button>
               );
             })}
+            </div>
+            {/* 오른쪽 fade — 스크롤 가능 힌트 */}
+            <div className="absolute top-0 right-0 bottom-2 w-12 bg-gradient-to-l from-[#f8fafc] dark:from-gray-950 to-transparent pointer-events-none" />
           </div>
         </div>
       )}
@@ -294,7 +298,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap justify-end">
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-0.5 sm:flex-wrap sm:justify-end">
           {/* 무작위 공모전 */}
           <button
             onClick={() => {
@@ -302,7 +306,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
               if (active.length > 0) onSelect(active[Math.floor(Math.random() * active.length)]);
             }}
             title="무작위 공모전 열기"
-            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all border-none cursor-pointer bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 dark:hover:text-amber-400 hover:border-amber-200 dark:hover:border-amber-800/50 shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all border-none cursor-pointer whitespace-nowrap bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 dark:hover:text-amber-400 hover:border-amber-200 dark:hover:border-amber-800/50 shadow-sm"
           >
             🎲 <span className="hidden sm:inline">랜덤</span>
           </button>
@@ -311,7 +315,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
           {totalExpiredCount > 0 && (
             <button
               onClick={() => setShowExpired((v) => !v)}
-              className={`inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all border-none cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all border-none cursor-pointer whitespace-nowrap ${
                 showExpired
                   ? "bg-amber-500 text-white shadow-lg shadow-amber-500/25"
                   : "bg-white dark:bg-gray-900 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-sm"
@@ -327,7 +331,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
           {/* 북마크 필터 토글 */}
           <button
             onClick={() => setShowBookmarkedOnly((v) => !v)}
-            className={`inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all border-none cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all border-none cursor-pointer whitespace-nowrap ${
               showBookmarkedOnly
                 ? "bg-amber-500 text-white shadow-lg shadow-amber-500/25"
                 : "bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-sm"
@@ -338,6 +342,9 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
             </svg>
             저장{bookmarks.length > 0 && ` (${bookmarks.length})`}
           </button>
+
+          {/* 필터/정렬 구분선 */}
+          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 flex-shrink-0" aria-hidden="true" />
 
           {/* Sort pills */}
           {[
