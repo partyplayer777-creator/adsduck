@@ -1,18 +1,27 @@
-export default function Footer() {
+import logoSrc from "../assets/adsduck-logo.png";
+
+export default function Footer({ onNavigate, onScrollToContests, darkMode }) {
+  const handleContestList = () => {
+    onScrollToContests?.();
+  };
+
   return (
     <footer className="bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 sm:gap-10">
           {/* Brand */}
           <div className="sm:col-span-2 md:col-span-1">
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-accent-500 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/20">
-                <span className="text-white font-extrabold text-sm">P</span>
-              </div>
-              <span className="text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">
-                Promo<span className="gradient-text">Hub</span>
-              </span>
-            </div>
+            <button
+              onClick={() => onNavigate?.("home")}
+              className="flex items-center mb-4 bg-transparent border-none cursor-pointer p-0 hover:opacity-80 transition-opacity"
+            >
+              <img
+                src={logoSrc}
+                alt="AdsDuck"
+                className="h-8 w-auto"
+                style={{ filter: darkMode ? "brightness(0) invert(1)" : "none" }}
+              />
+            </button>
             <p className="text-sm text-gray-400 dark:text-gray-500 leading-relaxed max-w-xs">
               기업과 크리에이터를 연결하는 공모전 홍보 플랫폼. 홍보하고 수익을 만드세요.
             </p>
@@ -23,10 +32,23 @@ export default function Footer() {
             <h3 className="font-bold text-gray-900 dark:text-white mb-4 text-sm tracking-wide uppercase">
               서비스
             </h3>
-            <ul className="space-y-3 text-sm text-gray-400 dark:text-gray-500">
-              <li className="hover:text-gray-600 dark:hover:text-gray-400 cursor-pointer transition-colors">공모전 목록</li>
-              <li className="hover:text-gray-600 dark:hover:text-gray-400 cursor-pointer transition-colors">참여 가이드</li>
-              <li className="hover:text-gray-600 dark:hover:text-gray-400 cursor-pointer transition-colors">자주 묻는 질문</li>
+            <ul className="space-y-3 text-sm">
+              <li>
+                <button
+                  onClick={handleContestList}
+                  className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors bg-transparent border-none cursor-pointer p-0 text-sm text-gray-400 dark:text-gray-500 font-normal"
+                >
+                  공모전 목록
+                </button>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-gray-300 dark:text-gray-600">참여 가이드</span>
+                <span className="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 px-1.5 py-0.5 rounded font-medium">준비중</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-gray-300 dark:text-gray-600">자주 묻는 질문</span>
+                <span className="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 px-1.5 py-0.5 rounded font-medium">준비중</span>
+              </li>
             </ul>
           </div>
 
@@ -35,10 +57,23 @@ export default function Footer() {
             <h3 className="font-bold text-gray-900 dark:text-white mb-4 text-sm tracking-wide uppercase">
               문의
             </h3>
-            <ul className="space-y-3 text-sm text-gray-400 dark:text-gray-500">
-              <li>support@promohub.kr</li>
-              <li className="hover:text-gray-600 dark:hover:text-gray-400 cursor-pointer transition-colors">이용약관</li>
-              <li className="hover:text-gray-600 dark:hover:text-gray-400 cursor-pointer transition-colors">개인정보처리방침</li>
+            <ul className="space-y-3 text-sm">
+              <li>
+                <a
+                  href="mailto:support@adsduck.kr"
+                  className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors no-underline text-gray-400 dark:text-gray-500"
+                >
+                  support@adsduck.kr
+                </a>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-gray-300 dark:text-gray-600">이용약관</span>
+                <span className="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 px-1.5 py-0.5 rounded font-medium">준비중</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-gray-300 dark:text-gray-600">개인정보처리방침</span>
+                <span className="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 px-1.5 py-0.5 rounded font-medium">준비중</span>
+              </li>
             </ul>
           </div>
 
@@ -53,15 +88,20 @@ export default function Footer() {
                 { label: "YouTube", path: "M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" },
                 { label: "Twitter", path: "M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" },
               ].map((social) => (
-                <button
-                  key={social.label}
-                  className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/30 dark:hover:text-primary-400 transition-all border-none cursor-pointer"
-                  aria-label={social.label}
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d={social.path} />
-                  </svg>
-                </button>
+                <div key={social.label} className="relative group/social">
+                  <button
+                    className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-300 dark:text-gray-600 cursor-not-allowed transition-all border-none opacity-60"
+                    aria-label={`${social.label} (준비중)`}
+                    disabled
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path d={social.path} />
+                    </svg>
+                  </button>
+                  <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-[10px] bg-gray-800 dark:bg-gray-700 text-white px-2 py-0.5 rounded-md whitespace-nowrap opacity-0 group-hover/social:opacity-100 transition-opacity pointer-events-none">
+                    준비중
+                  </span>
+                </div>
               ))}
             </div>
           </div>
@@ -70,7 +110,7 @@ export default function Footer() {
         {/* Bottom */}
         <div className="border-t border-gray-100 dark:border-gray-800 mt-10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-gray-300 dark:text-gray-600">
-            &copy; 2026 PromoHub. All rights reserved.
+            &copy; 2026 AdsDuck. All rights reserved.
           </p>
           <p className="text-xs text-gray-300 dark:text-gray-700">
             Made with care for creators

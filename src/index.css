@@ -1,6 +1,9 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
 @import "tailwindcss";
 
+/* Class-based dark mode — driven by JS (html.dark) */
+@custom-variant dark (&:is(.dark *));
+
 @theme {
   --color-primary-50: #eef2ff;
   --color-primary-100: #e0e7ff;
@@ -41,10 +44,8 @@ body {
   background: #f8fafc;
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    background: #030712;
-  }
+.dark body {
+  background: #030712;
 }
 
 /* Smooth scroll */
@@ -161,10 +162,8 @@ html {
   -webkit-backdrop-filter: blur(20px);
 }
 
-@media (prefers-color-scheme: dark) {
-  .glass {
-    background: rgba(15, 23, 42, 0.7);
-  }
+.dark .glass {
+  background: rgba(15, 23, 42, 0.7);
 }
 
 /* Gradient text */
@@ -175,19 +174,37 @@ html {
   background-clip: text;
 }
 
+/* prefers-reduced-motion: 애니메이션 최소화 */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .animate-fade-in,
+  .animate-slide-in-right {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .animate-float,
+  .animate-pulse-soft,
+  .animate-gradient-x,
+  .animate-count-up {
+    animation: none;
+  }
+  .card-hover {
+    transition: none;
+  }
+}
+
 /* Card hover lift */
 .card-hover {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 .card-hover:hover {
   transform: translateY(-4px);
-  box-shadow: 0 20px 40px -12px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 20px 40px -12px rgba(245, 158, 11, 0.18);
 }
 
-@media (prefers-color-scheme: dark) {
-  .card-hover:hover {
-    box-shadow: 0 20px 40px -12px rgba(99, 102, 241, 0.25);
-  }
+.dark .card-hover:hover {
+  box-shadow: 0 20px 40px -12px rgba(245, 158, 11, 0.22);
 }
 
 /* Hide scrollbar for category tabs */
@@ -234,12 +251,10 @@ html {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
-@media (prefers-color-scheme: dark) {
-  .notion-btn {
-    background: linear-gradient(135deg, #ffffff, #e5e7eb);
-    color: #000;
-  }
-  .notion-btn:hover {
-    background: linear-gradient(135deg, #f3f4f6, #ffffff);
-  }
+.dark .notion-btn {
+  background: linear-gradient(135deg, #ffffff, #e5e7eb);
+  color: #000;
+}
+.dark .notion-btn:hover {
+  background: linear-gradient(135deg, #f3f4f6, #ffffff);
 }

@@ -1,11 +1,24 @@
 import { useState, useEffect } from "react";
+import logoSrc from "../assets/adsduck-logo.png";
 
-export default function Header({ onNavigate, currentPage }) {
+export default function Header({ onNavigate, currentPage, darkMode, onToggleDark }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 10);
+    let lastY = window.scrollY;
+    const onScroll = () => {
+      const currentY = window.scrollY;
+      setScrolled(currentY > 10);
+      // 스크롤 다운 100px 이상 + 충분히 아래일 때만 숨김
+      if (currentY > lastY + 6 && currentY > 120) {
+        setHidden(true);
+      } else if (currentY < lastY - 4) {
+        setHidden(false);
+      }
+      lastY = currentY;
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -19,11 +32,19 @@ export default function Header({ onNavigate, currentPage }) {
     return () => { document.body.style.overflow = ""; };
   }, [mobileOpen]);
 
+  // 스크롤 전: hero 그라디언트 위 → 흰색 텍스트
+  // 스크롤 후: glass 배경 위 → 어두운 텍스트
+  const isOverHero = !scrolled && currentPage === "home";
+
   return (
     <header
       className={`sticky top-0 z-50 transition-all duration-300 ${
+        hidden ? "-translate-y-full" : "translate-y-0"
+      } ${
         scrolled
           ? "glass border-b border-gray-200/50 dark:border-gray-800/50 shadow-sm"
+          : isOverHero
+          ? "bg-gradient-to-r from-gray-950 via-gray-900 to-amber-950"
           : "bg-transparent"
       }`}
     >
@@ -32,56 +53,129 @@ export default function Header({ onNavigate, currentPage }) {
           {/* Logo */}
           <button
             onClick={() => onNavigate("home")}
-            className="flex items-center gap-2.5 cursor-pointer bg-transparent border-none group"
+            className="flex items-center cursor-pointer bg-transparent border-none group"
           >
-            <div className="relative w-9 h-9 bg-gradient-to-br from-primary-500 to-accent-500 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/20 group-hover:shadow-primary-500/40 transition-shadow">
-              <span className="text-white font-extrabold text-sm tracking-tight">P</span>
-              <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-white dark:border-gray-900" />
-            </div>
-            <span className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-              Promo<span className="gradient-text">Hub</span>
-            </span>
+            <img
+              src={logoSrc}
+              alt="AdsDuck"
+              className="h-11 sm:h-12 w-auto transition-all duration-300 group-hover:opacity-85"
+              style={{
+                filter: (isOverHero || darkMode)
+                  ? "brightness(0) invert(1)"
+                  : "none",
+              }}
+            />
           </button>
 
           {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-1">
-            {[
-              { key: "home", label: "공모전", active: true },
-              { key: "ranking", label: "랭킹", disabled: true },
-              { key: "mypage", label: "마이페이지", disabled: true },
-            ].map((item) => (
-              <button
-                key={item.key}
-                onClick={() => !item.disabled && onNavigate(item.key)}
-                disabled={item.disabled}
-                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all bg-transparent border-none cursor-pointer ${
-                  item.disabled
-                    ? "text-gray-300 dark:text-gray-600 cursor-not-allowed"
-                    : currentPage === item.key
-                    ? "bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
-                }`}
-              >
-                {item.label}
-                {item.disabled && (
-                  <span className="ml-1.5 text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 px-1.5 py-0.5 rounded-md font-medium">
-                    SOON
-                  </span>
-                )}
-              </button>
-            ))}
-          </nav>
+          <div className="hidden md:flex items-center gap-1">
+            <nav className="flex items-center gap-1">
+              {[
+                { key: "home", label: "공모전", active: true },
+                { key: "ranking", label: "랭킹", disabled: true },
+                { key: "mypage", label: "마이페이지", disabled: true },
+              ].map((item) => (
+                <div key={item.key} className="relative group/nav">
+                  <button
+                    onClick={() => !item.disabled && onNavigate(item.key)}
+                    disabled={item.disabled}
+                    className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all bg-transparent border-none cursor-pointer ${
+                      item.disabled
+                        ? isOverHero
+                          ? "text-white/30 cursor-not-allowed"
+                          : "text-gray-300 dark:text-gray-600 cursor-not-allowed"
+                        : currentPage === item.key
+                        ? isOverHero
+                          ? "bg-white/20 text-white"
+                          : "bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
+                        : isOverHero
+                        ? "text-white/80 hover:text-white hover:bg-white/10"
+                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                    }`}
+                  >
+                    {item.label}
+                    {item.disabled && (
+                      <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-md font-medium ${
+                        isOverHero
+                          ? "bg-white/10 text-white/40"
+                          : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500"
+                      }`}>
+                        SOON
+                      </span>
+                    )}
+                  </button>
+                  {item.disabled && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2.5 py-1.5 bg-gray-900 dark:bg-gray-700 text-white text-xs font-semibold rounded-lg whitespace-nowrap opacity-0 group-hover/nav:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
+                      곧 출시 예정이에요 ☕
+                      <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </nav>
 
-          {/* Mobile burger */}
-          <button
-            className="md:hidden p-2 rounded-xl text-gray-600 dark:text-gray-400 bg-transparent border-none cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            onClick={() => setMobileOpen(true)}
-            aria-label="메뉴 열기"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
+            {/* Dark mode toggle */}
+            <button
+              onClick={onToggleDark}
+              className={`ml-1 p-2 rounded-xl transition-all bg-transparent border-none cursor-pointer ${
+                isOverHero
+                  ? "text-white/80 hover:text-white hover:bg-white/10"
+                  : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200"
+              }`}
+              aria-label={darkMode ? "라이트 모드로 전환" : "다크 모드로 전환"}
+            >
+              {darkMode ? (
+                /* Sun icon */
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                </svg>
+              ) : (
+                /* Moon icon */
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
+          </div>
+
+          {/* Mobile right buttons */}
+          <div className="md:hidden flex items-center gap-1">
+            {/* Dark mode toggle (mobile) */}
+            <button
+              onClick={onToggleDark}
+              className={`p-2 rounded-xl transition-all bg-transparent border-none cursor-pointer ${
+                isOverHero
+                  ? "text-white/80 hover:text-white hover:bg-white/10"
+                  : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
+              aria-label={darkMode ? "라이트 모드" : "다크 모드"}
+            >
+              {darkMode ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
+
+            {/* Burger */}
+            <button
+              className={`p-2 rounded-xl bg-transparent border-none cursor-pointer transition-colors ${
+                isOverHero
+                  ? "text-white/80 hover:text-white hover:bg-white/10"
+                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
+              onClick={() => { setMobileOpen(true); setHidden(false); }}
+              aria-label="메뉴 열기"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -124,7 +218,7 @@ export default function Header({ onNavigate, currentPage }) {
                     item.disabled
                       ? "text-gray-300 dark:text-gray-600 cursor-not-allowed"
                       : currentPage === item.key
-                      ? "bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 cursor-pointer"
+                      ? "bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 cursor-pointer"
                       : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
                   }`}
                 >

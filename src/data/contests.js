@@ -119,6 +119,46 @@ export const contests = [
       "앱 주문 화면 포함",
     ],
   },
+  {
+    id: 7,
+    company: "코스메틱라운지",
+    logo: "https://ui-avatars.com/api/?name=CL&background=ec4899&color=fff&size=80&bold=true",
+    title: "봄 신제품 인스타 홍보 챌린지",
+    description:
+      "코스메틱라운지의 봄 한정 신제품을 인스타그램에서 소개해주세요. 자연스러운 데일리 메이크업 콘텐츠로 많은 분들의 참여를 기다립니다.",
+    deadline: "2026-03-31",
+    prize: "1등 100만원 / 2등 50만원 / 3등 20만원",
+    prizeAmount: 1000000,
+    participants: 847,
+    category: "인스타그램",
+    notionLink: "https://notion.so/example-contest-7",
+    status: "마감됨",
+    requirements: [
+      "인스타그램 피드 또는 릴스 1개 이상",
+      "#코스메틱라운지봄 해시태그 포함",
+      "제품 사용 전후 사진 포함",
+    ],
+  },
+  {
+    id: 8,
+    company: "테크스타트",
+    logo: "https://ui-avatars.com/api/?name=TS&background=6366f1&color=fff&size=80&bold=true",
+    title: "SaaS 툴 리뷰 콘텐츠 공모전",
+    description:
+      "테크스타트의 업무 생산성 SaaS 툴을 직접 사용해보고 리뷰 콘텐츠를 제작해주세요. 블로그, 유튜브, SNS 어떤 채널이든 환영합니다.",
+    deadline: "2026-04-05",
+    prize: "1등 200만원 / 2등 100만원 / 3등 40만원",
+    prizeAmount: 2000000,
+    participants: 203,
+    category: "리뷰 콘텐츠",
+    notionLink: "https://notion.so/example-contest-8",
+    status: "마감됨",
+    requirements: [
+      "최소 1000자 이상의 상세 리뷰 또는 5분 이상 영상",
+      "실제 사용 화면 캡처 필수",
+      "장단점 균형 있게 서술",
+    ],
+  },
 ];
 
 export const categories = [
