@@ -53,6 +53,15 @@ html {
   scroll-behavior: smooth;
 }
 
+/* 다크모드 전환 부드럽게 */
+html {
+  transition: background-color 150ms ease, color 150ms ease;
+}
+html.no-transition,
+html.no-transition * {
+  transition: none !important;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
@@ -117,6 +126,17 @@ html {
 @keyframes count-up {
   from { opacity: 0; transform: scale(0.5); }
   to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes bookmark-pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.45); }
+  65% { transform: scale(0.88); }
+  100% { transform: scale(1); }
+}
+
+.animate-bookmark-pop {
+  animation: bookmark-pop 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .animate-fade-in-up {

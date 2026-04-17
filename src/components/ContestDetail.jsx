@@ -1,5 +1,15 @@
 import { useState, useEffect } from "react";
 
+function formatCount(n) {
+  if (n >= 10000) return `${Math.floor(n / 1000)}K`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(".0", "")}K`;
+  return String(n);
+}
+
+function getStoredVisited() {
+  try { return JSON.parse(localStorage.getItem("ph-visited") || "[]"); } catch { return []; }
+}
+
 function RelatedLogo({ contest }) {
   const [err, setErr] = useState(false);
   if (err) {
@@ -31,6 +41,7 @@ export default function ContestDetail({ contest, contests = [], onBack, onSelect
   const [logoError, setLogoError] = useState(false);
   const [, setTick] = useState(0);
   const [isCopied, setIsCopied] = useState(false);
+  const [showStickyTitle, setShowStickyTitle] = useState(false);
 
   // D-day를 1분마다 재계산 (탭을 오래 열어뒀을 때 stale 방지)
   useEffect(() => {
@@ -47,6 +58,13 @@ export default function ContestDetail({ contest, contests = [], onBack, onSelect
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onBack]);
 
+  // 스크롤 120px 이상이면 sticky bar에 타이틀 표시
+  useEffect(() => {
+    const handleScroll = () => setShowStickyTitle(window.scrollY > 120);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   const daysLeft = Math.ceil(
     (new Date(contest.deadline) - new Date()) / (1000 * 60 * 60 * 24)
   );
@@ -55,8 +73,20 @@ export default function ContestDetail({ contest, contests = [], onBack, onSelect
   const isBookmarked = bookmarks.includes(contest.id);
   const prizeBreakdown = parsePrize(contest.prize);
 
+  // Hero D-day 진행 바
+  const REFERENCE_DAYS = 60;
+  const heroProgress = isExpired
+    ? 100
+    : Math.max(3, Math.min(97, 100 - (daysLeft / REFERENCE_DAYS) * 100));
+  const heroBarColor = isExpired
+    ? "bg-gray-400/40"
+    : daysLeft <= 1 ? "bg-gradient-to-r from-red-500 to-red-400"
+    : daysLeft <= 3 ? "bg-gradient-to-r from-red-400 to-orange-400"
+    : daysLeft <= 7 ? "bg-gradient-to-r from-orange-400 to-amber-400"
+    : "bg-gradient-to-r from-amber-400 to-yellow-400";
+
   const handleShare = async () => {
-    const url = `${window.location.origin}/promo-hub/?c=${contest.id}`;
+    const url = `${window.location.origin}${import.meta.env.BASE_URL}?c=${contest.id}`;
     const text = `📢 ${contest.title}\n💰 ${contest.prize}\n⏰ 마감: ${contest.deadline}\n\nAdsDuck에서 확인하세요!\n${url}`;
     try {
       if (navigator.share) {
@@ -98,7 +128,7 @@ export default function ContestDetail({ contest, contests = [], onBack, onSelect
     },
     {
       label: "참여자",
-      value: `${contest.participants.toLocaleString()}명`,
+      value: `${formatCount(contest.participants)}명`,
       icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z",
       color: "from-emerald-400 to-emerald-600",
     },
@@ -112,17 +142,27 @@ export default function ContestDetail({ contest, contests = [], onBack, onSelect
 
   return (
     <div className={`max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 ${!isExpired ? "pb-28 sm:pb-10" : ""}`}>
-      {/* Top bar: Back + actions */}
-      <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={onBack}
-          className="inline-flex items-center gap-2 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-all bg-transparent border-none cursor-pointer text-sm font-semibold group hover:gap-3"
-        >
-          <svg className="w-5 h-5 transition-transform group-hover:-translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          목록으로 돌아가기
-        </button>
+      {/* Top bar: Back + actions — sticky below site header */}
+      <div
+        className="sticky z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 mb-3 bg-[#f8fafc]/90 dark:bg-gray-950/90 backdrop-blur-md border-b border-gray-100/80 dark:border-gray-800/50 flex items-center justify-between"
+        style={{ top: "var(--header-h, 64px)" }}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            onClick={onBack}
+            className="inline-flex items-center gap-2 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-all bg-transparent border-none cursor-pointer text-sm font-semibold group hover:gap-3 flex-shrink-0"
+          >
+            <svg className="w-5 h-5 transition-transform group-hover:-translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span className="hidden sm:inline">목록으로 돌아가기</span>
+          </button>
+          {showStickyTitle && (
+            <span className="text-sm font-bold text-gray-700 dark:text-gray-200 truncate max-w-[200px] sm:max-w-xs animate-fade-in">
+              {contest.title}
+            </span>
+          )}
+        </div>
 
         {/* Action buttons */}
         <div className="flex items-center gap-2">
@@ -216,8 +256,14 @@ export default function ContestDetail({ contest, contests = [], onBack, onSelect
                       마감임박
                     </span>
                   )}
+                  {!isExpired && (() => {
+                    const ratio = contest.prizeAmount / (contest.participants || 1);
+                    if (ratio > 10000) return <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/80 text-white">경쟁↓</span>;
+                    if (ratio >= 5000) return <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-orange-500/80 text-white">경쟁↑</span>;
+                    return <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-red-500/70 text-white">경쟁↑↑</span>;
+                  })()}
                 </div>
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white leading-tight">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white leading-tight [word-break:keep-all]">
                   {contest.title}
                 </h1>
               </div>
@@ -248,6 +294,21 @@ export default function ContestDetail({ contest, contests = [], onBack, onSelect
               ))}
             </div>
           </div>
+        </div>
+
+        {/* D-day 진행 바 — hero 최하단 */}
+        <div
+          className="h-1 bg-white/10 w-full"
+          role="progressbar"
+          aria-valuenow={Math.round(heroProgress)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={isExpired ? "마감됨" : `D-${daysLeft} 남음`}
+        >
+          <div
+            className={`h-full ${heroBarColor} transition-all duration-1000`}
+            style={{ width: `${heroProgress}%` }}
+          />
         </div>
 
         {/* Body */}
@@ -400,6 +461,7 @@ export default function ContestDetail({ contest, contests = [], onBack, onSelect
                           dLeft <= 3
                             ? "border-red-100 dark:border-red-900/40 hover:border-red-200 dark:hover:border-red-800/50"
                             : "border-gray-100 dark:border-gray-800 hover:border-amber-200 dark:hover:border-amber-800/50"
+                        } ${getStoredVisited().includes(c.id) ? "opacity-50 hover:opacity-90" : ""
                         }`}
                       >
                         <RelatedLogo contest={c} />

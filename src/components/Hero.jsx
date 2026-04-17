@@ -104,7 +104,7 @@ export default function Hero({ contests, onScrollToContests }) {
           </div>
 
           {/* Heading */}
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white mb-6 animate-fade-in-up delay-100 leading-[1.15]">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white mb-6 animate-fade-in-up delay-100 leading-[1.15] [word-break:keep-all]">
             광고로 수익,{" "}
             <br className="sm:hidden" />
             <span className="relative inline-block">

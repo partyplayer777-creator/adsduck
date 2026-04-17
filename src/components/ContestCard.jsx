@@ -21,6 +21,13 @@ function Highlight({ text, query }) {
   );
 }
 
+// 참여자 수 압축 표기 (1200 → "1.2K", 12000 → "12K")
+function formatCount(n) {
+  if (n >= 10000) return `${Math.floor(n / 1000)}K`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(".0", "")}K`;
+  return String(n);
+}
+
 // 카테고리별 accent bar 그라디언트
 const categoryBarGradient = {
   "SNS 마케팅":  "from-blue-500 to-sky-400",
@@ -48,17 +55,18 @@ function getDdayBarColor(daysLeft, isExpired) {
   return "bg-gradient-to-r from-amber-400 to-amber-500";
 }
 
-export default function ContestCard({ contest, onClick, index = 0, isBookmarked, onToggleBookmark, onToast, searchQuery = "", onCategoryClick }) {
+export default function ContestCard({ contest, onClick, index = 0, isBookmarked, onToggleBookmark, onToast, searchQuery = "", onCategoryClick, isNew = false, isVisited = false }) {
   const [logoError, setLogoError] = React.useState(false);
   const [logoLoaded, setLogoLoaded] = React.useState(false);
   const [isCopied, setIsCopied] = React.useState(false);
+  const [bookmarkPop, setBookmarkPop] = React.useState(false);
 
   const daysLeft = Math.ceil(
     (new Date(contest.deadline) - new Date()) / (1000 * 60 * 60 * 24)
   );
 
   const isExpired = daysLeft <= 0;
-  const isUrgent = !isExpired && (contest.status === "마감임박" || daysLeft <= 7);
+  const isUrgent = !isExpired && (contest.status === "마감임박" || daysLeft <= 3);
 
   // 60일 기준으로 긴급도 계산 (마감이 가까울수록 바가 채워짐)
   const REFERENCE_DAYS = 60;
@@ -79,6 +87,8 @@ export default function ContestCard({ contest, onClick, index = 0, isBookmarked,
     e.stopPropagation();
     onToggleBookmark(contest.id);
     onToast?.(isBookmarked ? "북마크 해제됨" : "북마크에 추가됨 🔖");
+    setBookmarkPop(true);
+    setTimeout(() => setBookmarkPop(false), 420);
   };
 
   const handleCardKeyDown = (e) => {
@@ -90,7 +100,7 @@ export default function ContestCard({ contest, onClick, index = 0, isBookmarked,
 
   const handleShare = async (e) => {
     e.stopPropagation();
-    const url = `${window.location.origin}/promo-hub/?c=${contest.id}`;
+    const url = `${window.location.origin}${import.meta.env.BASE_URL}?c=${contest.id}`;
     const text = `📢 ${contest.title}\n💰 ${contest.prize}\n⏰ 마감: ${contest.deadline}\n\nAdsDuck에서 확인하세요!\n${url}`;
     try {
       if (navigator.share) {
@@ -114,7 +124,9 @@ export default function ContestCard({ contest, onClick, index = 0, isBookmarked,
       onClick={() => onClick(contest)}
       onKeyDown={handleCardKeyDown}
       aria-label={`${contest.title} 공모전 상세 보기`}
-      className={`group text-left bg-white dark:bg-gray-900 rounded-2xl border overflow-hidden w-full animate-fade-in-up cursor-pointer card-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 transition-colors duration-200 ${
+      className={`group text-left bg-white dark:bg-gray-900 rounded-2xl border overflow-hidden w-full animate-fade-in-up cursor-pointer card-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 transition-[colors,opacity] duration-200 ${
+        isVisited && !isExpired ? "opacity-[0.72] hover:opacity-100" : ""
+      } ${
         isExpired
           ? "border-gray-100 dark:border-gray-800 opacity-60"
           : !isExpired && daysLeft <= 1
@@ -125,7 +137,7 @@ export default function ContestCard({ contest, onClick, index = 0, isBookmarked,
     >
       {/* Top accent bar — 카테고리별 고유 색상, 마감 시 희미하게 유지 */}
       <div className={`h-1 bg-gradient-to-r ${categoryBarGradient[contest.category] || "from-amber-500 to-yellow-400"} transition-opacity duration-300 ${
-        isExpired ? "opacity-20" : "opacity-60 group-hover:opacity-100"
+        isExpired ? "opacity-20" : isVisited ? "opacity-30 group-hover:opacity-100" : "opacity-60 group-hover:opacity-100"
       }`} />
 
       <div className="p-5 sm:p-6">
@@ -153,7 +165,9 @@ export default function ContestCard({ contest, onClick, index = 0, isBookmarked,
                 </div>
               )}
               {isUrgent && (
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white dark:border-gray-900 animate-pulse-soft" />
+                <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white dark:border-gray-900 ${
+                  daysLeft <= 1 ? "bg-red-500 animate-pulse-soft" : "bg-orange-500"
+                }`} />
               )}
             </div>
             <div>
@@ -175,10 +189,19 @@ export default function ContestCard({ contest, onClick, index = 0, isBookmarked,
           </div>
 
           <div className="flex items-center gap-1">
+            {isNew && !isVisited && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-black px-1.5 py-0.5 bg-amber-500 text-white rounded-md animate-pulse-soft">
+                <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+                </span>
+                NEW
+              </span>
+            )}
             <button
               onClick={(e) => { e.stopPropagation(); onCategoryClick?.(contest.category); }}
               title={`"${contest.category}" 카테고리만 보기`}
-              className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition-opacity hover:opacity-75 bg-transparent border-none cursor-pointer ${categoryColors[contest.category] || "bg-gray-100 text-gray-600"}`}
+              className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition-all hover:scale-105 hover:shadow-sm active:scale-95 bg-transparent border-none cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-amber-400 ${categoryColors[contest.category] || "bg-gray-100 text-gray-600"}`}
             >
               {contest.category}
             </button>
@@ -187,7 +210,7 @@ export default function ContestCard({ contest, onClick, index = 0, isBookmarked,
 
         {/* Title */}
         <h3
-          className={`text-[17px] font-bold mb-2 transition-colors leading-snug line-clamp-2 ${
+          className={`text-[17px] font-bold mb-2 transition-colors leading-snug line-clamp-2 [word-break:keep-all] ${
             isExpired
               ? "text-gray-400 dark:text-gray-600"
               : "text-gray-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400"
@@ -199,7 +222,7 @@ export default function ContestCard({ contest, onClick, index = 0, isBookmarked,
 
         {/* Description */}
         <p
-          className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-5 leading-relaxed"
+          className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 sm:line-clamp-3 mb-5 leading-relaxed"
           title={contest.description}
         >
           {contest.description}
@@ -223,13 +246,31 @@ export default function ContestCard({ contest, onClick, index = 0, isBookmarked,
                   })()}
                 </span>
               )}
-              <span className={`text-xs ${getDdayStyle(daysLeft, isExpired)}`}>
-                {isExpired
-                  ? "마감됨"
-                  : daysLeft === 1
-                  ? "내일 마감!"
-                  : `D-${daysLeft}`}
-              </span>
+              {isExpired ? (
+                <span className="text-xs text-gray-400 dark:text-gray-600 font-bold">마감됨</span>
+              ) : daysLeft === 0 ? (
+                <span className="text-[11px] font-black px-2 py-0.5 rounded-md bg-red-500 text-white animate-pulse-soft">오늘 마감!</span>
+              ) : daysLeft === 1 ? (
+                <span className="text-[11px] font-black px-2 py-0.5 rounded-md bg-amber-500 text-white">내일까지!</span>
+              ) : daysLeft <= 3 ? (
+                <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-md bg-orange-500/90 text-white">D-{daysLeft} 마감</span>
+              ) : daysLeft <= 7 ? (
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-400/80 text-gray-900 dark:text-gray-900">D-{daysLeft}</span>
+              ) : (
+                <span className={`text-xs ${getDdayStyle(daysLeft, isExpired)}`}>D-{daysLeft}</span>
+              )}
+              {!isExpired && (() => {
+                const ratio = contest.prizeAmount / contest.participants;
+                if (ratio > 10000) return (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">경쟁↓</span>
+                );
+                if (ratio >= 5000) return (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-orange-50 text-orange-500 dark:bg-orange-900/30 dark:text-orange-400">경쟁↑</span>
+                );
+                return (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-50 text-red-500 dark:bg-red-900/30 dark:text-red-400">경쟁↑↑</span>
+                );
+              })()}
             </div>
           </div>
           <div
@@ -250,11 +291,14 @@ export default function ContestCard({ contest, onClick, index = 0, isBookmarked,
         {/* Footer */}
         <div className="flex items-center justify-between pt-4 border-t border-gray-50 dark:border-gray-800">
           <div className="flex items-center gap-1.5">
+            {isVisited && (
+              <span className="text-[10px] text-gray-300 dark:text-gray-600 font-semibold">✓ 확인함</span>
+            )}
             <svg className="w-4 h-4 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
             <span className="text-sm font-semibold text-gray-400 dark:text-gray-500">
-              {contest.participants.toLocaleString()}명
+              {formatCount(contest.participants)}명
             </span>
           </div>
 
@@ -302,7 +346,12 @@ export default function ContestCard({ contest, onClick, index = 0, isBookmarked,
               }`}
               aria-label={isBookmarked ? "북마크 해제" : "북마크"}
             >
-              <svg className="w-4 h-4" fill={isBookmarked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className={`w-4 h-4 ${bookmarkPop ? "animate-bookmark-pop" : ""}`}
+                fill={isBookmarked ? "currentColor" : "none"}
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
               </svg>
             </button>

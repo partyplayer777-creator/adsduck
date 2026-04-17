@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import logoSrc from "../assets/adsduck-logo.png";
 
 export default function Header({ onNavigate, currentPage, darkMode, onToggleDark }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [hidden, setHidden] = useState(false);
+  const headerRef = useRef(null);
 
   useEffect(() => {
     let lastY = window.scrollY;
@@ -23,6 +24,12 @@ export default function Header({ onNavigate, currentPage, darkMode, onToggleDark
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // 헤더 높이를 CSS 변수로 공유 — 카테고리 탭 sticky 위치에 사용
+  useEffect(() => {
+    const h = headerRef.current ? headerRef.current.offsetHeight : 64;
+    document.documentElement.style.setProperty("--header-h", hidden ? "0px" : `${h}px`);
+  }, [hidden]);
+
   useEffect(() => {
     if (mobileOpen) {
       document.body.style.overflow = "hidden";
@@ -38,6 +45,7 @@ export default function Header({ onNavigate, currentPage, darkMode, onToggleDark
 
   return (
     <header
+      ref={headerRef}
       className={`sticky top-0 z-50 transition-all duration-300 ${
         hidden ? "-translate-y-full" : "translate-y-0"
       } ${
