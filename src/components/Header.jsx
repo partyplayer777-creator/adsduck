@@ -57,16 +57,16 @@ export default function Header({ onNavigate, currentPage, darkMode, onToggleDark
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 sm:h-18">
+        <div className="flex items-center justify-between h-18 sm:h-20">
           {/* Logo */}
           <button
             onClick={() => onNavigate("home")}
-            className="flex items-center cursor-pointer bg-transparent border-none group"
+            className="flex items-center cursor-pointer bg-transparent border-none group -ml-2 sm:-ml-3"
           >
             <img
               src={logoSrc}
               alt="AdsDuck"
-              className="h-11 sm:h-12 w-auto transition-all duration-300 group-hover:opacity-85"
+              className="h-16 sm:h-18 w-auto max-w-[150px] sm:max-w-[180px] object-contain transition-all duration-300 group-hover:opacity-85"
               style={{
                 filter: (isOverHero || darkMode)
                   ? "brightness(0) invert(1)"

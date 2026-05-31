@@ -123,8 +123,8 @@ export default function Hero({ contests, onScrollToContests }) {
             SNS 콘텐츠로 상금을 받고, 기업은 효과적인 바이럴을 만드세요.
           </p>
 
-          {/* CTA — 두 개 버튼 */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 animate-fade-in-up delay-300">
+          {/* CTA */}
+          <div className="flex flex-col items-center justify-center gap-3 animate-fade-in-up delay-300">
             <button
               onClick={onScrollToContests}
               className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-amber-400 to-yellow-400 text-gray-950 font-extrabold rounded-2xl hover:from-amber-300 hover:to-yellow-300 transition-all shadow-xl shadow-amber-500/25 hover:shadow-2xl hover:shadow-amber-500/35 hover:-translate-y-0.5 text-base border-none cursor-pointer"
@@ -137,32 +137,14 @@ export default function Hero({ contests, onScrollToContests }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
             </button>
-            <div className="group w-full sm:w-auto flex items-center rounded-2xl border border-white/20 hover:border-amber-400/50 transition-all overflow-hidden">
-              <a
-                href={`mailto:${CONTACT_EMAIL}?subject=기업 등록 문의&body=안녕하세요, AdsDuck에 기업 공모전 등록을 문의드립니다.`}
-                className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 bg-transparent text-white/80 font-bold hover:text-amber-300 hover:bg-amber-500/5 transition-all text-base no-underline"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                기업 등록 문의
-              </a>
-              <button
-                onClick={handleCopyEmail}
-                title={emailCopied ? "복사됨!" : "이메일 주소 복사"}
-                className={`px-3 py-4 border-l border-white/10 bg-transparent text-white/40 hover:text-amber-300 hover:bg-amber-500/5 transition-all cursor-pointer ${emailCopied ? "text-amber-400" : ""}`}
-              >
-                {emailCopied ? (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                )}
-              </button>
-            </div>
+            <button
+              onClick={handleCopyEmail}
+              className={`bg-transparent border-none text-xs font-bold cursor-pointer transition-colors ${
+                emailCopied ? "text-amber-300" : "text-white/35 hover:text-white/60"
+              }`}
+            >
+              {emailCopied ? "문의 이메일이 복사됐어요" : "기업 공모전 문의"}
+            </button>
           </div>
         </div>
 
