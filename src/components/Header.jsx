@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import logoSrc from "../assets/adsduck-logo.png";
+import logoSrc from "../assets/adsduck-logo-cropped.png";
 
 export default function Header({ onNavigate, currentPage, darkMode, onToggleDark, authSession, onOpenAuth }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -61,12 +61,12 @@ export default function Header({ onNavigate, currentPage, darkMode, onToggleDark
           {/* Logo */}
           <button
             onClick={() => onNavigate("home")}
-            className="flex items-center cursor-pointer bg-transparent border-none group -ml-2 sm:-ml-3"
+            className="flex items-center cursor-pointer bg-transparent border-none group"
           >
             <img
               src={logoSrc}
               alt="AdsDuck"
-              className="h-16 sm:h-18 w-auto max-w-[150px] sm:max-w-[180px] object-contain transition-all duration-300 group-hover:opacity-85"
+              className="h-9 sm:h-10 w-auto object-contain transition-all duration-300 group-hover:opacity-85"
               style={{
                 filter: (isOverHero || darkMode)
                   ? "brightness(0) invert(1)"
