@@ -103,6 +103,11 @@ export function useAuthSession() {
   const loginWithProvider = useCallback((provider = "google", mode = "login", options = {}) => {
     setAuthError("");
 
+    if (mode === "signup" && !options.marketingConsent) {
+      setAuthError("필수 동의 항목을 체크해야 회원가입할 수 있습니다.");
+      return;
+    }
+
     if (!appConfig.authBaseUrl) {
       const displayName = mode === "signup" ? "new.creator" : "demo.creator";
       persistSession({
