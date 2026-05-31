@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 
 function ToastItem({ message, type, onDone }) {
   const [visible, setVisible] = useState(false);
@@ -76,19 +76,4 @@ export function ToastContainer({ toasts, onRemove }) {
       ))}
     </div>
   );
-}
-
-export function useToast() {
-  const [toasts, setToasts] = useState([]);
-
-  const addToast = useCallback((message, type = "success") => {
-    const id = Date.now() + Math.random();
-    setToasts((prev) => [...prev, { id, message, type }]);
-  }, []);
-
-  const removeToast = useCallback((id) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  }, []);
-
-  return { toasts, addToast, removeToast };
 }

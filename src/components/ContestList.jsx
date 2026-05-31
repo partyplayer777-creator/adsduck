@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import ContestCard from "./ContestCard";
 import { categories } from "../data/contests";
+import { getStoredItem, setStoredItem, removeStoredItem, STORAGE_KEYS, LEGACY_STORAGE_KEYS } from "../storageKeys";
 
 function UrgentLogo({ contest }) {
   const [error, setError] = useState(false);
@@ -110,16 +111,16 @@ function FilterChips({ activeCategory, searchQuery, showBookmarkedOnly, showUnvi
 
 export default function ContestList({ contests, onSelect, bookmarks, onToggleBookmark, onToast }) {
   const [activeCategory, setActiveCategory] = useState(() => {
-    try { return sessionStorage.getItem("ph-category") || "전체"; } catch { return "전체"; }
+    return getStoredItem(sessionStorage, STORAGE_KEYS.category, LEGACY_STORAGE_KEYS.category) || "전체";
   });
   const [visitedIds, setVisitedIds] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("ph-visited") || "[]"); } catch { return []; }
+    try { return JSON.parse(getStoredItem(localStorage, STORAGE_KEYS.visited, LEGACY_STORAGE_KEYS.visited) || "[]"); } catch { return []; }
   });
   const [sortBy, setSortBy] = useState(() => {
-    try { return localStorage.getItem("ph-sort") || "deadline"; } catch { return "deadline"; }
+    return getStoredItem(localStorage, STORAGE_KEYS.sort, LEGACY_STORAGE_KEYS.sort) || "deadline";
   });
   const [searchQuery, setSearchQuery] = useState(() => {
-    try { return sessionStorage.getItem("ph-search") || ""; } catch { return ""; }
+    return getStoredItem(sessionStorage, STORAGE_KEYS.search, LEGACY_STORAGE_KEYS.search) || "";
   });
   const [showBookmarkedOnly, setShowBookmarkedOnly] = useState(false);
   const [showUnvisitedOnly, setShowUnvisitedOnly] = useState(false);
@@ -134,18 +135,18 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
   const tabsScrollRef = useRef(null);
   const [tabsAtStart, setTabsAtStart] = useState(true);
   const [recentSearches, setRecentSearches] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("ph-recent-searches") || "[]"); } catch { return []; }
+    try { return JSON.parse(getStoredItem(localStorage, STORAGE_KEYS.recentSearches, LEGACY_STORAGE_KEYS.recentSearches) || "[]"); } catch { return []; }
   });
 
   // 검색어·카테고리 세션 보존 — 카드 열고 뒤로가면 복원됨
   useEffect(() => {
-    try { sessionStorage.setItem("ph-search", searchQuery); } catch {}
+    setStoredItem(sessionStorage, STORAGE_KEYS.search, searchQuery);
   }, [searchQuery]);
   useEffect(() => {
-    try { sessionStorage.setItem("ph-category", activeCategory); } catch {}
+    setStoredItem(sessionStorage, STORAGE_KEYS.category, activeCategory);
   }, [activeCategory]);
   useEffect(() => {
-    try { localStorage.setItem("ph-sort", sortBy); } catch {}
+    setStoredItem(localStorage, STORAGE_KEYS.sort, sortBy);
   }, [sortBy]);
 
   // 카테고리 탭 스크롤 위치 추적 (왼쪽 fade 표시용)
@@ -207,14 +208,14 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
     setVisitedIds((prev) => {
       if (prev.includes(contest.id)) return prev;
       const next = [...prev, contest.id];
-      try { localStorage.setItem("ph-visited", JSON.stringify(next)); } catch {}
+      setStoredItem(localStorage, STORAGE_KEYS.visited, JSON.stringify(next));
       return next;
     });
     onSelect(contest);
   };
 
   const handleClearVisited = () => {
-    try { localStorage.removeItem("ph-visited"); } catch {}
+    removeStoredItem(localStorage, STORAGE_KEYS.visited, LEGACY_STORAGE_KEYS.visited);
     setVisitedIds([]);
     setShowUnvisitedOnly(false);
     onToast?.("방문 기록이 초기화됐어요 ✓");
@@ -226,7 +227,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
     setRecentSearches(prev => {
       const filtered = prev.filter(s => s !== trimmed);
       const next = [trimmed, ...filtered].slice(0, 5);
-      try { localStorage.setItem("ph-recent-searches", JSON.stringify(next)); } catch {}
+      setStoredItem(localStorage, STORAGE_KEYS.recentSearches, JSON.stringify(next));
       return next;
     });
   };
@@ -234,7 +235,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
   const removeRecentSearch = (term) => {
     setRecentSearches(prev => {
       const next = prev.filter(s => s !== term);
-      try { localStorage.setItem("ph-recent-searches", JSON.stringify(next)); } catch {}
+      setStoredItem(localStorage, STORAGE_KEYS.recentSearches, JSON.stringify(next));
       return next;
     });
   };
@@ -708,7 +709,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
             <div className="px-4 pt-3 pb-1.5 flex items-center justify-between">
               <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">최근 검색</span>
               <button
-                onMouseDown={(e) => { e.preventDefault(); setRecentSearches([]); try { localStorage.removeItem("ph-recent-searches"); } catch {} }}
+                onMouseDown={(e) => { e.preventDefault(); setRecentSearches([]); removeStoredItem(localStorage, STORAGE_KEYS.recentSearches, LEGACY_STORAGE_KEYS.recentSearches); }}
                 className="text-[10px] text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 bg-transparent border-none cursor-pointer transition-colors"
               >
                 모두 삭제
@@ -758,7 +759,6 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
         {showSuggestions && suggestions.length > 0 && (
           <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden animate-fade-in">
             {suggestions.map((contest, i) => {
-              const q = searchQuery.toLowerCase();
               const isActive = i === suggestionIdx;
               return (
                 <button

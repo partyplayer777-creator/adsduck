@@ -41,6 +41,14 @@ export default function Footer({ onNavigate, onScrollToContests, darkMode }) {
                   공모전 목록
                 </button>
               </li>
+              <li>
+                <button
+                  onClick={() => onNavigate?.("board")}
+                  className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors bg-transparent border-none cursor-pointer p-0 text-sm text-gray-400 dark:text-gray-500 font-normal"
+                >
+                  게시판
+                </button>
+              </li>
               <li className="flex items-center gap-2">
                 <span className="text-gray-300 dark:text-gray-600">참여 가이드</span>
                 <span className="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 px-1.5 py-0.5 rounded font-medium">준비중</span>

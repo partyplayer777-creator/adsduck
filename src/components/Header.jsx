@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import logoSrc from "../assets/adsduck-logo.png";
 
-export default function Header({ onNavigate, currentPage, darkMode, onToggleDark }) {
+export default function Header({ onNavigate, currentPage, darkMode, onToggleDark, authSession, onOpenAuth }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -80,6 +80,7 @@ export default function Header({ onNavigate, currentPage, darkMode, onToggleDark
             <nav className="flex items-center gap-1">
               {[
                 { key: "home", label: "공모전", active: true },
+                { key: "board", label: "게시판", active: true },
                 { key: "ranking", label: "랭킹", disabled: true },
                 { key: "mypage", label: "마이페이지", disabled: true },
               ].map((item) => (
@@ -144,6 +145,43 @@ export default function Header({ onNavigate, currentPage, darkMode, onToggleDark
                 </svg>
               )}
             </button>
+
+            {authSession?.isAuthenticated ? (
+              <div className="ml-1 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 dark:bg-gray-800/70">
+                <span className={`text-xs font-bold max-w-[120px] truncate ${
+                  isOverHero ? "text-white" : "text-gray-700 dark:text-gray-200"
+                }`}>
+                  {authSession.user?.display_name || authSession.user?.email || "사용자"}
+                </span>
+                <button
+                  onClick={authSession.logout}
+                  className={`text-[11px] font-bold bg-transparent border-none cursor-pointer ${
+                    isOverHero ? "text-white/60 hover:text-white" : "text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                  }`}
+                >
+                  로그아웃
+                </button>
+              </div>
+            ) : (
+              <div className="ml-1 flex items-center gap-1">
+                <button
+                  onClick={() => onOpenAuth?.("login")}
+                  className={`px-3 py-2 rounded-xl text-sm font-bold border-none cursor-pointer transition-colors ${
+                    isOverHero
+                      ? "bg-white/10 text-white hover:bg-white/20"
+                      : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  로그인
+                </button>
+                <button
+                  onClick={() => onOpenAuth?.("signup")}
+                  className="px-3 py-2 rounded-xl text-sm font-extrabold border-none cursor-pointer bg-gradient-to-r from-amber-400 to-yellow-400 text-gray-950"
+                >
+                  회원가입
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Mobile right buttons */}
@@ -208,8 +246,47 @@ export default function Header({ onNavigate, currentPage, darkMode, onToggleDark
               </button>
             </div>
             <nav className="p-4 flex flex-col gap-1">
+              {authSession?.isAuthenticated ? (
+                <div className="mb-3 rounded-2xl bg-gray-50 dark:bg-gray-800/60 p-4">
+                  <p className="text-xs font-bold text-gray-400 dark:text-gray-500 mb-1">로그인 계정</p>
+                  <p className="text-sm font-extrabold text-gray-900 dark:text-white truncate">
+                    {authSession.user?.display_name || authSession.user?.email || "사용자"}
+                  </p>
+                  <button
+                    onClick={() => {
+                      authSession.logout();
+                      setMobileOpen(false);
+                    }}
+                    className="mt-3 text-xs font-bold text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 bg-transparent border-none cursor-pointer p-0"
+                  >
+                    로그아웃
+                  </button>
+                </div>
+              ) : (
+                <div className="mb-3 grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      onOpenAuth?.("login");
+                      setMobileOpen(false);
+                    }}
+                    className="px-3 py-3 rounded-xl text-sm font-bold border border-gray-200 dark:border-gray-700 bg-transparent text-gray-700 dark:text-gray-200 cursor-pointer"
+                  >
+                    로그인
+                  </button>
+                  <button
+                    onClick={() => {
+                      onOpenAuth?.("signup");
+                      setMobileOpen(false);
+                    }}
+                    className="px-3 py-3 rounded-xl text-sm font-extrabold border-none bg-gradient-to-r from-amber-400 to-yellow-400 text-gray-950 cursor-pointer"
+                  >
+                    회원가입
+                  </button>
+                </div>
+              )}
               {[
                 { key: "home", label: "공모전", icon: "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" },
+                { key: "board", label: "게시판", icon: "M8 10h8M8 14h5m-9 6h16a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2z" },
                 { key: "ranking", label: "랭킹", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z", disabled: true },
                 { key: "mypage", label: "마이페이지", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z", disabled: true },
               ].map((item) => (

@@ -3,31 +3,88 @@ import Header from "./components/Header";
 import Hero from "./components/Hero";
 import ContestList from "./components/ContestList";
 import ContestDetail from "./components/ContestDetail";
+import Board from "./components/Board";
 import Terms from "./components/Terms";
 import Footer from "./components/Footer";
-import { ToastContainer, useToast } from "./components/Toast";
+import { ToastContainer } from "./components/Toast";
 import ScrollToTop from "./components/ScrollToTop";
+import AuthDialog from "./components/AuthDialog";
 import { contests } from "./data/contests";
 import { allTerms } from "./data/terms";
+import { useAuthSession } from "./hooks/useAuthSession";
+import { usePointWallet } from "./hooks/usePointWallet";
+import { useToast } from "./hooks/useToast";
+import { getStoredItem, setStoredItem, STORAGE_KEYS, LEGACY_STORAGE_KEYS } from "./storageKeys";
 
 const TERMS_KEYS = new Set(allTerms.map((t) => t.key));
 const DEFAULT_TERMS_KEY = "service";
 
+function getInitialRoute() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("board") === "1") {
+    return {
+      page: "board",
+      contest: null,
+      termsSection: DEFAULT_TERMS_KEY,
+      title: "게시판 — AdsDuck",
+      historyState: { page: "board" },
+    };
+  }
+
+  const termsParam = params.get("terms");
+  if (termsParam !== null) {
+    const key = TERMS_KEYS.has(termsParam) ? termsParam : DEFAULT_TERMS_KEY;
+    return {
+      page: "terms",
+      contest: null,
+      termsSection: key,
+      title: "이용약관 — AdsDuck",
+      historyState: { page: "terms", termsSection: key },
+    };
+  }
+
+  const contestId = Number(params.get("c"));
+  if (contestId) {
+    const contest = contests.find((c) => c.id === contestId);
+    if (contest) {
+      return {
+        page: "detail",
+        contest,
+        termsSection: DEFAULT_TERMS_KEY,
+        title: `${contest.title} — AdsDuck`,
+        historyState: { page: "detail", contestId: contest.id },
+      };
+    }
+  }
+
+  return {
+    page: "home",
+    contest: null,
+    termsSection: DEFAULT_TERMS_KEY,
+    title: "AdsDuck - 공모전 홍보 플랫폼",
+    historyState: { page: "home" },
+  };
+}
+
 export default function App() {
-  const [page, setPage] = useState("home");
-  const [selectedContest, setSelectedContest] = useState(null);
-  const [termsSection, setTermsSection] = useState(DEFAULT_TERMS_KEY);
+  const [initialRoute] = useState(getInitialRoute);
+  const [page, setPage] = useState(initialRoute.page);
+  const [selectedContest, setSelectedContest] = useState(initialRoute.contest);
+  const [termsSection, setTermsSection] = useState(initialRoute.termsSection);
   const { toasts, addToast, removeToast } = useToast();
+  const authSession = useAuthSession();
+  const pointAccount = usePointWallet(authSession.session);
+  const [authDialogMode, setAuthDialogMode] = useState(null);
 
   const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem("ph-dark");
+    const saved = getStoredItem(localStorage, STORAGE_KEYS.darkMode, LEGACY_STORAGE_KEYS.darkMode);
     if (saved !== null) return saved === "true";
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
 
   const [bookmarks, setBookmarks] = useState(() => {
     try {
-      const saved = localStorage.getItem("ph-bookmarks");
+      const saved = getStoredItem(localStorage, STORAGE_KEYS.bookmarks, LEGACY_STORAGE_KEYS.bookmarks);
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -41,36 +98,16 @@ export default function App() {
     } else {
       document.documentElement.classList.remove("dark");
     }
-    localStorage.setItem("ph-dark", String(darkMode));
+    setStoredItem(localStorage, STORAGE_KEYS.darkMode, String(darkMode));
   }, [darkMode]);
 
   // 초기 history state 세팅 + URL 파라미터로 직접 공유 지원
   //  ?c=ID      → 콘테스트 상세
   //  ?terms=K   → 이용약관 (K: service | ad | contest)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const termsParam = params.get("terms");
-    if (termsParam !== null) {
-      const key = TERMS_KEYS.has(termsParam) ? termsParam : DEFAULT_TERMS_KEY;
-      setTermsSection(key);
-      setPage("terms");
-      document.title = "이용약관 — AdsDuck";
-      window.history.replaceState({ page: "terms", termsSection: key }, "");
-      return;
-    }
-    const contestId = Number(params.get("c"));
-    if (contestId) {
-      const contest = contests.find((c) => c.id === contestId);
-      if (contest) {
-        setSelectedContest(contest);
-        setPage("detail");
-        document.title = `${contest.title} — AdsDuck`;
-        window.history.replaceState({ page: "detail", contestId: contest.id }, "");
-        return;
-      }
-    }
-    window.history.replaceState({ page: "home" }, "");
-  }, []);
+    document.title = initialRoute.title;
+    window.history.replaceState(initialRoute.historyState, "");
+  }, [initialRoute]);
 
   // 브라우저 뒤로가기 지원
   useEffect(() => {
@@ -95,6 +132,9 @@ export default function App() {
         setTermsSection(key);
         setPage("terms");
         setSelectedContest(null);
+      } else if (state.page === "board") {
+        setPage("board");
+        setSelectedContest(null);
       }
     };
     window.addEventListener("popstate", handlePopState);
@@ -106,13 +146,13 @@ export default function App() {
       const next = prev.includes(contestId)
         ? prev.filter((id) => id !== contestId)
         : [...prev, contestId];
-      localStorage.setItem("ph-bookmarks", JSON.stringify(next));
+      setStoredItem(localStorage, STORAGE_KEYS.bookmarks, JSON.stringify(next));
       return next;
     });
   };
 
   const handleSelect = (contest) => {
-    sessionStorage.setItem("ph-scroll-y", String(window.scrollY));
+    setStoredItem(sessionStorage, STORAGE_KEYS.scrollY, String(window.scrollY));
     setSelectedContest(contest);
     setPage("detail");
     document.title = `${contest.title} — AdsDuck`;
@@ -136,6 +176,8 @@ export default function App() {
         nextUrl = window.location.pathname;
       } else if (target === "terms") {
         nextUrl = `${window.location.pathname}?terms=${nextTermsSection}`;
+      } else if (target === "board") {
+        nextUrl = `${window.location.pathname}?board=1`;
       } else {
         nextUrl = window.location.href;
       }
@@ -154,7 +196,7 @@ export default function App() {
     }
     if (target === "home") {
       document.title = "AdsDuck - 공모전 홍보 플랫폼";
-      const savedY = Number(sessionStorage.getItem("ph-scroll-y") || 0);
+      const savedY = Number(getStoredItem(sessionStorage, STORAGE_KEYS.scrollY, LEGACY_STORAGE_KEYS.scrollY) || 0);
       if (savedY > 0) {
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
@@ -167,6 +209,8 @@ export default function App() {
     } else {
       if (target === "terms") {
         document.title = "이용약관 — AdsDuck";
+      } else if (target === "board") {
+        document.title = "게시판 — AdsDuck";
       }
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -200,6 +244,8 @@ export default function App() {
         currentPage={page}
         darkMode={darkMode}
         onToggleDark={() => setDarkMode((d) => !d)}
+        authSession={authSession}
+        onOpenAuth={setAuthDialogMode}
       />
 
       <main className="flex-1">
@@ -224,6 +270,17 @@ export default function App() {
             bookmarks={bookmarks}
             onToggleBookmark={toggleBookmark}
             onToast={addToast}
+            authSession={authSession.session}
+            pointAccount={pointAccount}
+            onRequireLogin={setAuthDialogMode}
+          />
+        )}
+        {page === "board" && (
+          <Board
+            authSession={authSession.session}
+            pointAccount={pointAccount}
+            onRequireLogin={setAuthDialogMode}
+            onToast={addToast}
           />
         )}
         {page === "terms" && (
@@ -242,6 +299,16 @@ export default function App() {
       />
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
+      <AuthDialog
+        open={!!authDialogMode}
+        mode={authDialogMode || "login"}
+        error={authSession.authError}
+        onClose={() => setAuthDialogMode(null)}
+        onProviderLogin={(provider, mode, options) => {
+          authSession.loginWithProvider(provider, mode, options);
+          setAuthDialogMode(null);
+        }}
+      />
       <ScrollToTop />
     </div>
   );

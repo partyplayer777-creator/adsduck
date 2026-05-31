@@ -15,7 +15,10 @@
     <meta name="twitter:description" content="기업과 크리에이터를 연결하는 공모전 홍보 플랫폼." />
     <script>
       (function () {
-        var saved = localStorage.getItem("ph-dark");
+        var saved = localStorage.getItem("adsduck-dark") || localStorage.getItem("ph-dark");
+        if (saved !== null) {
+          localStorage.setItem("adsduck-dark", saved);
+        }
         var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
         if (saved === "true" || (saved === null && prefersDark)) {
           document.documentElement.classList.add("dark");

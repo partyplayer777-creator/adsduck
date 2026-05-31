@@ -1,4 +1,7 @@
 import { useState, useEffect } from "react";
+import { getStoredItem, STORAGE_KEYS, LEGACY_STORAGE_KEYS } from "../storageKeys";
+import EntrySubmitDialog from "./EntrySubmitDialog";
+import ParticipantLeaderboard from "./ParticipantLeaderboard";
 
 function formatCount(n) {
   if (n >= 10000) return `${Math.floor(n / 1000)}K`;
@@ -7,7 +10,11 @@ function formatCount(n) {
 }
 
 function getStoredVisited() {
-  try { return JSON.parse(localStorage.getItem("ph-visited") || "[]"); } catch { return []; }
+  try {
+    return JSON.parse(getStoredItem(localStorage, STORAGE_KEYS.visited, LEGACY_STORAGE_KEYS.visited) || "[]");
+  } catch {
+    return [];
+  }
 }
 
 function RelatedLogo({ contest }) {
@@ -37,11 +44,13 @@ function parsePrize(prizeStr) {
   });
 }
 
-export default function ContestDetail({ contest, contests = [], onBack, onSelect, bookmarks, onToggleBookmark, onToast }) {
+export default function ContestDetail({ contest, contests = [], onBack, onSelect, bookmarks, onToggleBookmark, onToast, authSession, pointAccount, onRequireLogin }) {
   const [logoError, setLogoError] = useState(false);
   const [, setTick] = useState(0);
   const [isCopied, setIsCopied] = useState(false);
   const [showStickyTitle, setShowStickyTitle] = useState(false);
+  const [entryDialogOpen, setEntryDialogOpen] = useState(false);
+  const [leaderboardRefresh, setLeaderboardRefresh] = useState(0);
 
   // D-day를 1분마다 재계산 (탭을 오래 열어뒀을 때 stale 방지)
   useEffect(() => {
@@ -103,6 +112,14 @@ export default function ContestDetail({ contest, contests = [], onBack, onSelect
     }
   };
 
+  const handleParticipate = () => {
+    if (!authSession?.user) {
+      onRequireLogin?.("login");
+      return;
+    }
+    setEntryDialogOpen(true);
+  };
+
   const infoCards = [
     {
       label: "상금",
@@ -141,7 +158,7 @@ export default function ContestDetail({ contest, contests = [], onBack, onSelect
   ];
 
   return (
-    <div className={`max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 ${!isExpired ? "pb-28 sm:pb-10" : ""}`}>
+    <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 ${!isExpired ? "pb-28 sm:pb-10" : ""}`}>
       {/* Top bar: Back + actions — sticky below site header */}
       <div
         className="sticky z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 mb-3 bg-[#f8fafc]/90 dark:bg-gray-950/90 backdrop-blur-md border-b border-gray-100/80 dark:border-gray-800/50 flex items-center justify-between"
@@ -167,17 +184,15 @@ export default function ContestDetail({ contest, contests = [], onBack, onSelect
         {/* Action buttons */}
         <div className="flex items-center gap-2">
           {!isExpired && (
-            <a
-              href={contest.notionLink}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              onClick={handleParticipate}
               className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-400 to-yellow-400 text-gray-950 font-extrabold rounded-xl shadow-md shadow-amber-500/20 hover:from-amber-300 hover:to-yellow-300 hover:-translate-y-0.5 transition-all no-underline text-sm"
             >
-              지금 참여하기
+              공모전 참가
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
-            </a>
+            </button>
           )}
           <button
             onClick={handleShare}
@@ -216,7 +231,8 @@ export default function ContestDetail({ contest, contests = [], onBack, onSelect
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-xl shadow-gray-200/50 dark:shadow-none animate-fade-in-up">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start">
+      <div className="min-w-0 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-xl shadow-gray-200/50 dark:shadow-none animate-fade-in-up">
         {/* Header */}
         <div className="relative overflow-hidden">
           <div className={`absolute inset-0 ${
@@ -408,20 +424,77 @@ export default function ContestDetail({ contest, contests = [], onBack, onSelect
             </ul>
           </div>
 
+          {/* Enterprise contest brief */}
+          <div className="mb-10 animate-fade-in-up delay-300">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-900/30 flex items-center justify-center">
+                <svg className="w-4 h-4 text-sky-600 dark:text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-8 0h8m-8 0H5a2 2 0 01-2-2V7a2 2 0 012-2h3m8 12h3a2 2 0 002-2V7a2 2 0 00-2-2h-3M8 5a2 2 0 012-2h4a2 2 0 012 2" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-extrabold text-gray-900 dark:text-white">
+                기업 공모전 본문
+              </h2>
+            </div>
+            <div className="pl-10 grid grid-cols-1 md:grid-cols-2 gap-3">
+              {[
+                ["상금 및 기간", `${contest.prize} · 마감 ${contest.deadline}`],
+                ["쇼츠 공모전 조건", contest.requirements.join(" / ")],
+                ["추가 서비스 선택", "기간 연장, 팔로우수 조건, 좋아요·조회수 하한선, TOP10 입찰 노출"],
+                ["영상 제작 참고자료", "로고, 제품 컷, 필수 문구, 금지 표현, 해시태그, 레퍼런스 영상"],
+              ].map(([title, value]) => (
+                <div key={title} className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-4">
+                  <p className="text-xs font-bold text-gray-400 dark:text-gray-500 mb-2">{title}</p>
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 leading-relaxed">{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Enterprise paid add-ons */}
+          <div className="mb-10 animate-fade-in-up delay-300">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-extrabold text-gray-900 dark:text-white">
+                기업 추가 서비스
+              </h2>
+            </div>
+            <div className="pl-10 space-y-3">
+              {[
+                ["공모전 기간 연장", "기본 3개월, 1개월 추가마다 10만원. 개월 설정은 초기 설정 시에만 가능합니다."],
+                ["참가 유저 팔로우수 조건", "참가 가능한 유저의 최소 팔로우수를 설정할 수 있습니다. 추가금 10만원."],
+                ["좋아요·조회수 당선 하한선", "당선 기준의 최소 좋아요·조회수를 설정할 수 있습니다. 추가금 10만원."],
+                ["상위 TOP10 노출", "공모전 개수가 많아질수록 TOP10 노출 영역은 경매 입찰 방식으로 운영됩니다."],
+              ].map(([title, value]) => (
+                <div key={title} className="flex items-start gap-3 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+                  <span className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40 text-xs font-black text-amber-700 dark:text-amber-300">
+                    ₩
+                  </span>
+                  <div>
+                    <p className="text-sm font-extrabold text-gray-900 dark:text-white">{title}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-gray-500 dark:text-gray-400">{value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Mobile sticky CTA */}
           {!isExpired && (
             <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pt-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-100 dark:border-gray-800" style={{ paddingBottom: "max(24px, env(safe-area-inset-bottom))" }}>
-              <a
-                href={contest.notionLink}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={handleParticipate}
                 className="flex items-center justify-center gap-2 w-full py-4 bg-gradient-to-r from-amber-500 to-yellow-400 text-gray-950 font-extrabold rounded-2xl shadow-lg shadow-amber-500/25 no-underline text-base"
               >
-                지금 참여하기
+                공모전 참가 / 링크 첨부
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
-              </a>
+              </button>
             </div>
           )}
 
@@ -581,6 +654,23 @@ export default function ContestDetail({ contest, contests = [], onBack, onSelect
           </div>
         </div>
       </div>
+      <ParticipantLeaderboard
+        contestId={contest.id}
+        authSession={authSession}
+        refreshKey={leaderboardRefresh}
+        onSubmitClick={() => setEntryDialogOpen(true)}
+        onRequireLogin={onRequireLogin}
+      />
+      </div>
+      <EntrySubmitDialog
+        open={entryDialogOpen}
+        contest={contest}
+        authSession={authSession}
+        pointAccount={pointAccount}
+        onClose={() => setEntryDialogOpen(false)}
+        onSubmitted={() => setLeaderboardRefresh((value) => value + 1)}
+        onToast={onToast}
+      />
     </div>
   );
 }
