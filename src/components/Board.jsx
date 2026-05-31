@@ -94,6 +94,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
   const [comments, setComments] = useState({});
   const [penaltyAmounts, setPenaltyAmounts] = useState({});
   const [chargeAmount, setChargeAmount] = useState("10000");
+  const [composerOpen, setComposerOpen] = useState(false);
   const user = authSession?.user || null;
   const userId = user?.id || null;
   const wallet = pointAccount?.wallet || null;
@@ -160,8 +161,21 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
 
     persistPosts((prev) => [post, ...prev]);
     setDraft({ title: "", content: "" });
+    setComposerOpen(false);
     pointAccount?.addPoints(POINT_RULES.postReward, "게시글 작성 보상");
     onToast?.(`게시글 작성 보상 ${formatPoint(POINT_RULES.postReward)} 지급`);
+  };
+
+  const handleOpenComposer = () => {
+    if (!userId) {
+      onRequireLogin?.("login");
+      return;
+    }
+    if (pointAccount?.isActivityBlocked) {
+      onToast?.("포인트가 마이너스라 게시판 활동이 제한됩니다.");
+      return;
+    }
+    setComposerOpen((value) => !value);
   };
 
   const handleLike = (postId) => {
@@ -289,136 +303,130 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
   };
 
   return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      <div className="mb-8 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
+    <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-bold text-amber-600 dark:text-amber-400 mb-2">
-            AdsDuck Community
-          </p>
+          <p className="text-sm font-bold text-amber-500 mb-2">커뮤니티</p>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-950 dark:text-white tracking-tight">
             게시판
           </h1>
-          <p className="mt-3 text-sm sm:text-base text-gray-500 dark:text-gray-400 leading-relaxed max-w-2xl">
-            실명 게시판과 익명 게시판을 분리하고, 게시글/댓글/좋아요/벌점 활동을 포인트 정책과 연결했습니다.
-          </p>
         </div>
-
-        <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 min-w-[260px]">
-          <p className="text-xs font-bold text-gray-400 dark:text-gray-500 mb-1">내 포인트</p>
-          <p className={`text-3xl font-black ${wallet?.balance < 0 ? "text-red-500" : "text-gray-950 dark:text-white"}`}>
-            {wallet ? formatPoint(wallet.balance) : "로그인 필요"}
-          </p>
-          {wallet?.balance < 0 && (
-            <p className="mt-2 text-xs font-semibold text-red-500">
-              포인트가 마이너스라 게시글 활동이 제한됩니다.
-            </p>
-          )}
-          <div className="mt-4 flex gap-2">
-            <input
-              value={chargeAmount}
-              onChange={(event) => setChargeAmount(event.target.value)}
-              type="number"
-              min="1000"
-              step="1000"
-              className="min-w-0 flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
-              aria-label="충전 포인트"
-            />
-            <button
-              onClick={handleCharge}
-              className="px-3 py-2 rounded-xl border-none bg-gray-950 dark:bg-white text-white dark:text-gray-950 text-sm font-extrabold cursor-pointer"
-            >
-              충전
-            </button>
-          </div>
-          <p className="mt-2 text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
-            포인트는 현금가 1:1로 충전되며 출금과 유저 간 거래는 지원하지 않습니다.
-          </p>
-          <button
-            onClick={handleAttendance}
-            className="mt-3 w-full px-3 py-2.5 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 text-sm font-extrabold cursor-pointer"
-          >
-            출석 보너스 받기
-          </button>
-          {wallet && (
-            <p className="mt-2 text-[11px] font-semibold text-gray-400 dark:text-gray-500">
-              현재 연속 출석 {wallet.attendanceDay || 0}일
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="mb-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
-        {[
-          ["공모전 참가", `참가 시 ${formatPoint(POINT_RULES.contestEntryCost)} 사용`],
-          ["첫 가입 혜택", `${formatPoint(POINT_RULES.signupBonus)} 지급`],
-          ["연속 출석", `1~10일차는 100P씩 상승, 이후 ${formatPoint(POINT_RULES.attendanceMaxBonus)} 고정. 하루 쉬면 1일차 초기화`],
-          ["게시판 보상", `글 ${formatPoint(POINT_RULES.postReward)} / 댓글 ${formatPoint(POINT_RULES.commentReward)} / 좋아요 ${formatPoint(POINT_RULES.likeReward)}`],
-          ["익명 벌점 전투", `1시간 ${formatPoint(POINT_RULES.penaltyHourlyLimit)} 제한`],
-        ].map(([title, value]) => (
-          <div key={title} className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
-            <p className="text-xs font-bold text-gray-400 dark:text-gray-500">{title}</p>
-            <p className="mt-2 text-sm font-extrabold text-gray-900 dark:text-white leading-snug">{value}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="mb-5 flex flex-wrap gap-2">
-        {BOARD_TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveBoard(tab.key)}
-            className={`px-4 py-2.5 rounded-xl border-none text-sm font-extrabold cursor-pointer transition-colors ${
-              activeBoard === tab.key
-                ? "bg-gray-950 dark:bg-white text-white dark:text-gray-950"
-                : "bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-[360px_minmax(0,1fr)] gap-6 items-start">
-        <form
-          onSubmit={handleCreatePost}
-          className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-5"
+        <button
+          onClick={handleOpenComposer}
+          className="inline-flex items-center justify-center rounded-2xl border-none bg-gradient-to-r from-amber-400 to-yellow-400 px-5 py-3 text-sm font-extrabold text-gray-950 cursor-pointer shadow-lg shadow-amber-500/15"
         >
-          <h2 className="text-lg font-extrabold text-gray-950 dark:text-white mb-4">
-            글쓰기
-          </h2>
-          <label className="block mb-3">
-            <span className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">제목</span>
-            <input
-              value={draft.title}
-              onChange={(event) => setDraft((prev) => ({ ...prev, title: event.target.value }))}
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
-              placeholder="게시글 제목"
-            />
-          </label>
-          <label className="block">
-            <span className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">내용</span>
-            <textarea
-              value={draft.content}
-              onChange={(event) => setDraft((prev) => ({ ...prev, content: event.target.value }))}
-              rows={6}
-              className="w-full px-3 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
-              placeholder="공모전 후기, 질문, 제작 팁을 남겨보세요."
-            />
-          </label>
-          <button
-            type="submit"
-            className="mt-4 w-full px-4 py-3 rounded-xl border-none bg-gradient-to-r from-amber-400 to-yellow-400 text-gray-950 text-sm font-extrabold cursor-pointer disabled:opacity-60"
-            disabled={pointAccount?.isActivityBlocked}
-          >
-            게시글 등록 +{formatPoint(POINT_RULES.postReward)}
-          </button>
-        </form>
+          글쓰기 +{formatPoint(POINT_RULES.postReward)}
+        </button>
+      </div>
 
-        <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
+        <div className="min-w-0 space-y-4">
+          <div className="sticky top-[var(--header-h,64px)] z-20 -mx-4 sm:mx-0 px-4 sm:px-0 py-3 bg-[#f8fafc]/95 dark:bg-gray-950/95 backdrop-blur-md">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              {BOARD_TABS.map((tab) => {
+                const count = posts.filter((post) => post.board === tab.key).length;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveBoard(tab.key)}
+                    className={`flex-shrink-0 rounded-full border px-4 py-2 text-sm font-extrabold cursor-pointer transition-colors ${
+                      activeBoard === tab.key
+                        ? "border-amber-400 bg-amber-400 text-gray-950"
+                        : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                    }`}
+                  >
+                    {tab.label}
+                    <span className="ml-2 text-xs opacity-70">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {!userId && (
+            <div className="rounded-2xl border border-amber-200/70 dark:border-amber-800/70 bg-amber-50 dark:bg-amber-900/20 p-4 sm:p-5">
+              <p className="text-base font-extrabold text-gray-950 dark:text-white">
+                로그인하면 첫 가입 5,000P와 출석 보너스를 받을 수 있어요.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  onClick={() => onRequireLogin?.("login")}
+                  className="rounded-xl border-none bg-gray-950 dark:bg-white px-4 py-2.5 text-sm font-extrabold text-white dark:text-gray-950 cursor-pointer"
+                >
+                  로그인
+                </button>
+                <button
+                  onClick={() => onRequireLogin?.("signup")}
+                  className="rounded-xl border border-amber-300 dark:border-amber-700 bg-white/70 dark:bg-gray-950/30 px-4 py-2.5 text-sm font-extrabold text-amber-700 dark:text-amber-300 cursor-pointer"
+                >
+                  회원가입
+                </button>
+              </div>
+            </div>
+          )}
+
+          {composerOpen && (
+            <form
+              onSubmit={handleCreatePost}
+              className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 sm:p-5"
+            >
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="text-lg font-extrabold text-gray-950 dark:text-white">
+                  {activeBoard === "anonymous" ? "익명으로 글쓰기" : "실명으로 글쓰기"}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setComposerOpen(false)}
+                  className="rounded-xl border-none bg-gray-100 dark:bg-gray-800 px-3 py-2 text-xs font-bold text-gray-500 dark:text-gray-400 cursor-pointer"
+                >
+                  닫기
+                </button>
+              </div>
+              <label className="block mb-3">
+                <span className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">제목</span>
+                <input
+                  value={draft.title}
+                  onChange={(event) => setDraft((prev) => ({ ...prev, title: event.target.value }))}
+                  className="w-full px-3 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  placeholder="제목을 입력하세요"
+                />
+              </label>
+              <label className="block">
+                <span className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">내용</span>
+                <textarea
+                  value={draft.content}
+                  onChange={(event) => setDraft((prev) => ({ ...prev, content: event.target.value }))}
+                  rows={4}
+                  className="w-full px-3 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
+                  placeholder="공모전 후기, 질문, 제작 팁을 남겨보세요."
+                />
+              </label>
+              <button
+                type="submit"
+                className="mt-4 w-full px-4 py-3 rounded-xl border-none bg-gradient-to-r from-amber-400 to-yellow-400 text-gray-950 text-sm font-extrabold cursor-pointer disabled:opacity-60"
+                disabled={pointAccount?.isActivityBlocked}
+              >
+                등록하기
+              </button>
+            </form>
+          )}
+
+          {visiblePosts.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-8 text-center">
+              <p className="text-sm font-bold text-gray-400 dark:text-gray-500">아직 글이 없습니다.</p>
+              <button
+                onClick={handleOpenComposer}
+                className="mt-4 rounded-xl border-none bg-amber-400 px-4 py-2.5 text-sm font-extrabold text-gray-950 cursor-pointer"
+              >
+                첫 글 쓰기
+              </button>
+            </div>
+          )}
+
           {visiblePosts.map((post) => (
             <article
               key={post.id}
-              className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-5"
+              className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 sm:p-5"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
@@ -435,7 +443,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
                       </span>
                     )}
                   </div>
-                  <h3 className="text-lg font-extrabold text-gray-950 dark:text-white leading-snug">
+                  <h3 className="text-lg sm:text-xl font-extrabold text-gray-950 dark:text-white leading-snug">
                     {post.title}
                   </h3>
                 </div>
@@ -454,24 +462,26 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
                   onClick={() => handleLike(post.id)}
                   className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent text-sm font-bold text-gray-600 dark:text-gray-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
-                  좋아요 +{formatPoint(POINT_RULES.likeReward)}
+                  좋아요
+                  <span className="ml-1 text-amber-500">+{formatPoint(POINT_RULES.likeReward)}</span>
                 </button>
                 {post.board === "anonymous" && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <input
                       value={penaltyAmounts[post.id] || ""}
                       onChange={(event) => setPenaltyAmounts((prev) => ({ ...prev, [post.id]: event.target.value }))}
                       type="number"
                       min="1"
                       max={POINT_RULES.penaltyHourlyLimit}
-                      className="w-24 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-red-400"
+                      placeholder="벌점"
+                      className="w-20 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-red-400"
                       aria-label="벌점 포인트"
                     />
                     <button
                       onClick={() => handlePenalty(post.id)}
                       className="px-3 py-2 rounded-xl border-none bg-red-500 text-white text-sm font-extrabold cursor-pointer"
                     >
-                      벌점
+                      적용
                     </button>
                     <span className="text-xs text-gray-400 dark:text-gray-500">
                       사용 {formatPoint(hourlyPenaltyUsed)} / {formatPoint(POINT_RULES.penaltyHourlyLimit)}
@@ -515,6 +525,68 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
             </article>
           ))}
         </div>
+
+        <aside className="lg:sticky lg:top-[calc(var(--header-h,64px)+16px)] space-y-4">
+          <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+            <p className="text-xs font-bold text-gray-400 dark:text-gray-500 mb-1">내 포인트</p>
+            <p className={`text-3xl font-black ${wallet?.balance < 0 ? "text-red-500" : "text-gray-950 dark:text-white"}`}>
+              {wallet ? formatPoint(wallet.balance) : "-"}
+            </p>
+            {wallet?.balance < 0 && (
+              <p className="mt-2 text-xs font-semibold text-red-500">
+                포인트가 마이너스라 활동이 제한됩니다.
+              </p>
+            )}
+            {userId ? (
+              <>
+                <button
+                  onClick={handleAttendance}
+                  className="mt-4 w-full rounded-xl border-none bg-amber-400 px-3 py-3 text-sm font-extrabold text-gray-950 cursor-pointer"
+                >
+                  출석하기
+                </button>
+                <p className="mt-2 text-[11px] font-semibold text-gray-400 dark:text-gray-500">
+                  연속 출석 {wallet?.attendanceDay || 0}일
+                </p>
+                <div className="mt-4 flex gap-2">
+                  <input
+                    value={chargeAmount}
+                    onChange={(event) => setChargeAmount(event.target.value)}
+                    type="number"
+                    min="1000"
+                    step="1000"
+                    className="min-w-0 flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    aria-label="충전 포인트"
+                  />
+                  <button
+                    onClick={handleCharge}
+                    className="px-3 py-2 rounded-xl border-none bg-gray-950 dark:bg-white text-white dark:text-gray-950 text-sm font-extrabold cursor-pointer"
+                  >
+                    충전
+                  </button>
+                </div>
+              </>
+            ) : (
+              <button
+                onClick={() => onRequireLogin?.("login")}
+                className="mt-4 w-full rounded-xl border-none bg-gray-950 dark:bg-white px-3 py-3 text-sm font-extrabold text-white dark:text-gray-950 cursor-pointer"
+              >
+                로그인하고 시작
+              </button>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+            <p className="text-sm font-extrabold text-gray-950 dark:text-white mb-3">포인트</p>
+            <div className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
+              <p>글 작성 <b className="text-gray-900 dark:text-white">+{formatPoint(POINT_RULES.postReward)}</b></p>
+              <p>댓글 <b className="text-gray-900 dark:text-white">+{formatPoint(POINT_RULES.commentReward)}</b></p>
+              <p>좋아요 <b className="text-gray-900 dark:text-white">+{formatPoint(POINT_RULES.likeReward)}</b></p>
+              <p>공모전 참가 <b className="text-gray-900 dark:text-white">-{formatPoint(POINT_RULES.contestEntryCost)}</b></p>
+              <p>익명 벌점 <b className="text-gray-900 dark:text-white">1시간 {formatPoint(POINT_RULES.penaltyHourlyLimit)}</b></p>
+            </div>
+          </div>
+        </aside>
       </div>
     </section>
   );
