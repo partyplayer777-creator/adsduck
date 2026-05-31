@@ -424,7 +424,7 @@ export default function ContestDetail({ contest, contests = [], onBack, onSelect
             </ul>
           </div>
 
-          {/* Enterprise contest brief */}
+          {/* Participation checklist */}
           <div className="mb-10 animate-fade-in-up delay-300">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-900/30 flex items-center justify-center">
@@ -433,51 +433,18 @@ export default function ContestDetail({ contest, contests = [], onBack, onSelect
                 </svg>
               </div>
               <h2 className="text-xl font-extrabold text-gray-900 dark:text-white">
-                기업 공모전 본문
+                참가 전 확인
               </h2>
             </div>
-            <div className="pl-10 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="pl-10 grid grid-cols-1 md:grid-cols-3 gap-3">
               {[
-                ["상금 및 기간", `${contest.prize} · 마감 ${contest.deadline}`],
-                ["쇼츠 공모전 조건", contest.requirements.join(" / ")],
-                ["추가 서비스 선택", "기간 연장, 팔로우수 조건, 좋아요·조회수 하한선, TOP10 입찰 노출"],
-                ["영상 제작 참고자료", "로고, 제품 컷, 필수 문구, 금지 표현, 해시태그, 레퍼런스 영상"],
+                ["참가 포인트", "링크 제출 시 1,000P가 사용됩니다."],
+                ["제출 링크", "업로드한 SNS 링크를 첨부하면 랭킹에 반영됩니다."],
+                ["참고자료", "아래 자료 다운로드에서 제작에 필요한 파일을 확인하세요."],
               ].map(([title, value]) => (
                 <div key={title} className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-4">
                   <p className="text-xs font-bold text-gray-400 dark:text-gray-500 mb-2">{title}</p>
                   <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 leading-relaxed">{value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Enterprise paid add-ons */}
-          <div className="mb-10 animate-fade-in-up delay-300">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-extrabold text-gray-900 dark:text-white">
-                기업 추가 서비스
-              </h2>
-            </div>
-            <div className="pl-10 space-y-3">
-              {[
-                ["공모전 기간 연장", "기본 3개월, 1개월 추가마다 10만원. 개월 설정은 초기 설정 시에만 가능합니다."],
-                ["참가 유저 팔로우수 조건", "참가 가능한 유저의 최소 팔로우수를 설정할 수 있습니다. 추가금 10만원."],
-                ["좋아요·조회수 당선 하한선", "당선 기준의 최소 좋아요·조회수를 설정할 수 있습니다. 추가금 10만원."],
-                ["상위 TOP10 노출", "공모전 개수가 많아질수록 TOP10 노출 영역은 경매 입찰 방식으로 운영됩니다."],
-              ].map(([title, value]) => (
-                <div key={title} className="flex items-start gap-3 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
-                  <span className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40 text-xs font-black text-amber-700 dark:text-amber-300">
-                    ₩
-                  </span>
-                  <div>
-                    <p className="text-sm font-extrabold text-gray-900 dark:text-white">{title}</p>
-                    <p className="mt-1 text-sm leading-relaxed text-gray-500 dark:text-gray-400">{value}</p>
-                  </div>
                 </div>
               ))}
             </div>

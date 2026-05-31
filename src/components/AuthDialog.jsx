@@ -5,11 +5,11 @@ export default function AuthDialog({ mode = "login", open, error, onClose, onPro
 
   if (!open) return null;
 
-  const title = mode === "signup" ? "회원가입" : "유저 로그인";
+  const title = mode === "signup" ? "회원가입" : "로그인";
   const subtitle =
     mode === "signup"
-      ? "첫 로그인 시 계정이 자동 생성되고 공모전 참가 기록이 연결됩니다."
-      : "참가 링크 제출과 랭킹 확인을 위해 로그인합니다.";
+      ? "가입하면 첫 혜택 5,000P가 지급되고 참가 기록이 저장됩니다."
+      : "포인트와 공모전 참가 기록을 저장하려면 로그인하세요.";
 
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center px-4">
@@ -47,7 +47,7 @@ export default function AuthDialog({ mode = "login", open, error, onClose, onPro
                 className="mt-0.5 h-4 w-4 accent-amber-500"
               />
               <span className="text-xs leading-relaxed text-gray-600 dark:text-gray-300">
-                광고성 이벤트 연락 수신에 동의합니다. 공모전이 업데이트 되는 것을 연락 받을 수 있습니다.
+                공모전 업데이트와 이벤트 소식을 받을 수 있습니다. 광고성 연락 수신에 동의합니다.
               </span>
             </label>
           )}
@@ -72,9 +72,6 @@ export default function AuthDialog({ mode = "login", open, error, onClose, onPro
           </p>
         )}
 
-        <p className="mt-4 text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
-          개발 환경에서 인증 서버 주소가 없으면 데모 계정으로 로그인됩니다.
-        </p>
       </div>
     </div>
   );
