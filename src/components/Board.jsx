@@ -263,7 +263,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
   const handlePenalty = (postId) => {
     if (!requireActivity()) return;
     if (activeBoard !== "anonymous") {
-      onToast?.("벌점 전투는 익명 게시판에서만 가능합니다.");
+      onToast?.("벌점은 익명 게시판에서만 줄 수 있습니다.");
       return;
     }
 
@@ -278,11 +278,11 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
       return;
     }
     if (hourlyPenaltyUsed + amount > POINT_RULES.penaltyHourlyLimit) {
-      onToast?.(`벌점 전투는 1시간에 ${formatPoint(POINT_RULES.penaltyHourlyLimit)}까지 가능합니다.`);
+      onToast?.(`벌점은 1시간에 ${formatPoint(POINT_RULES.penaltyHourlyLimit)}까지 줄 수 있습니다.`);
       return;
     }
 
-    const spendResult = pointAccount?.spendPoints(amount, "익명 게시판 벌점 전투");
+    const spendResult = pointAccount?.spendPoints(amount, "익명 게시판 벌점");
     if (!spendResult?.ok) {
       onToast?.(spendResult?.error || "포인트가 부족합니다.");
       return;
@@ -505,7 +505,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
                       <span className="text-gray-400 dark:text-gray-500">{formatDate(post.createdAt)}</span>
                       {post.board === "anonymous" && (
                         <span className="rounded-md bg-red-50 px-2 py-0.5 font-bold text-red-500 dark:bg-red-900/20">
-                          벌점 가능
+                          익명 벌점 활성
                         </span>
                       )}
                     </div>
@@ -529,40 +529,49 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
                   <div className="flex h-11 items-center justify-center rounded-lg border border-gray-200 px-3 text-sm font-black text-gray-600 dark:border-gray-800 dark:text-gray-300">
                     댓글 {(post.comments || []).length}
                   </div>
-                  {post.board === "anonymous" && (
-                    <details className="col-span-2 sm:min-w-[280px]">
-                      <summary className="flex h-11 cursor-pointer list-none items-center justify-center rounded-lg border border-red-200 bg-red-50 px-3 text-sm font-black text-red-600 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300">
-                        벌점 전투
-                      </summary>
-                      <div className="mt-2 rounded-lg border border-red-100 bg-red-50/60 p-3 dark:border-red-900/60 dark:bg-red-950/20">
-                        <div className="flex gap-2">
-                          <input
-                            value={penaltyAmounts[post.id] || ""}
-                            onChange={(event) => setPenaltyAmounts((prev) => ({ ...prev, [post.id]: event.target.value }))}
-                            type="number"
-                            min="1"
-                            max={POINT_RULES.penaltyHourlyLimit}
-                            placeholder="포인트"
-                            className="min-w-0 flex-1 rounded-lg border border-red-200 bg-white px-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-red-400 dark:border-red-900 dark:bg-gray-950 dark:text-gray-100"
-                            aria-label="벌점 포인트"
-                          />
-                          <button
-                            onClick={() => handlePenalty(post.id)}
-                            className="h-11 rounded-lg border-none bg-red-500 px-4 text-sm font-black text-white"
-                          >
-                            적용
-                          </button>
-                        </div>
-                        <p className="mt-2 text-xs font-semibold text-red-500 dark:text-red-300">
-                          1시간 사용 {formatPoint(hourlyPenaltyUsed)} / {formatPoint(POINT_RULES.penaltyHourlyLimit)}
-                        </p>
-                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          누적 벌점 {formatPoint(post.penaltyPoints)} · 상대 예상 포인트 {formatPoint(post.targetBalancePreview)}
+                </div>
+
+                {post.board === "anonymous" && (
+                  <div className="mt-3 rounded-lg border border-red-100 bg-red-50/60 p-3 dark:border-red-900/60 dark:bg-red-950/20">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-black text-red-600 dark:text-red-300">익명 벌점</p>
+                        <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                          내 포인트를 사용한 만큼 상대 포인트가 차감됩니다.
                         </p>
                       </div>
-                    </details>
-                  )}
-                </div>
+                      <div className="flex gap-2 sm:w-[260px]">
+                        <input
+                          value={penaltyAmounts[post.id] || ""}
+                          onChange={(event) => setPenaltyAmounts((prev) => ({ ...prev, [post.id]: event.target.value }))}
+                          type="number"
+                          min="1"
+                          max={POINT_RULES.penaltyHourlyLimit}
+                          placeholder="포인트"
+                          className="h-11 min-w-0 flex-1 rounded-lg border border-red-200 bg-white px-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-red-400 dark:border-red-900 dark:bg-gray-950 dark:text-gray-100"
+                          aria-label="벌점 포인트"
+                        />
+                        <button
+                          onClick={() => handlePenalty(post.id)}
+                          className="h-11 rounded-lg border-none bg-red-500 px-4 text-sm font-black text-white"
+                        >
+                          적용
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                      <span className="font-semibold text-red-500 dark:text-red-300">
+                        1시간 사용 {formatPoint(hourlyPenaltyUsed)} / {formatPoint(POINT_RULES.penaltyHourlyLimit)}
+                      </span>
+                      <span className="text-gray-500 dark:text-gray-400">
+                        누적 벌점 {formatPoint(post.penaltyPoints)}
+                      </span>
+                      <span className="text-gray-500 dark:text-gray-400">
+                        상대 예상 포인트 {formatPoint(post.targetBalancePreview)}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-800">
                   {(post.comments || []).length > 0 && (
@@ -658,7 +667,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
               ))}
             </div>
             <div className="mt-3 rounded-lg bg-red-50 p-3 text-xs font-semibold leading-5 text-red-600 dark:bg-red-950/30 dark:text-red-300">
-              익명 벌점은 내 포인트를 사용하며 1시간 최대 {formatPoint(POINT_RULES.penaltyHourlyLimit)}까지 가능합니다.
+              익명 게시글에는 내 포인트를 사용해 상대에게 벌점을 줄 수 있으며, 1시간 최대 {formatPoint(POINT_RULES.penaltyHourlyLimit)}까지 가능합니다.
             </div>
           </div>
         </aside>
