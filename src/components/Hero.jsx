@@ -20,10 +20,9 @@ function useCountUp(target, duration = 1400) {
   return count;
 }
 
-const CONTACT_EMAIL = "support@adsduck.kr";
+const COMPANY_CONTACT_URL = "https://open.kakao.com/o/sW7KjCxi";
 
 export default function Hero({ contests, onScrollToContests }) {
-  const [emailCopied, setEmailCopied] = useState(false);
   const now = new Date();
   const activeContests = contests.filter(
     (c) => new Date(c.deadline) > now
@@ -36,15 +35,9 @@ export default function Hero({ contests, onScrollToContests }) {
   const animatedParticipants = useCountUp(totalParticipants, 1200);
   const animatedPrize = useCountUp(totalPrizeMan, 1400);
 
-  const handleCopyEmail = async (e) => {
+  const handleCompanyContact = (e) => {
     e.preventDefault();
-    try {
-      await navigator.clipboard.writeText(CONTACT_EMAIL);
-      setEmailCopied(true);
-      setTimeout(() => setEmailCopied(false), 2000);
-    } catch {
-      window.location.href = `mailto:${CONTACT_EMAIL}?subject=기업 등록 문의`;
-    }
+    window.open(COMPANY_CONTACT_URL, "_blank", "noopener,noreferrer");
   };
 
   const stats = [
@@ -138,12 +131,10 @@ export default function Hero({ contests, onScrollToContests }) {
               </svg>
             </button>
             <button
-              onClick={handleCopyEmail}
-              className={`bg-transparent border-none text-xs font-bold cursor-pointer transition-colors ${
-                emailCopied ? "text-amber-300" : "text-white/35 hover:text-white/60"
-              }`}
+              onClick={handleCompanyContact}
+              className="bg-transparent border-none text-xs font-bold cursor-pointer transition-colors text-white/35 hover:text-white/60"
             >
-              {emailCopied ? "문의 이메일이 복사됐어요" : "기업 공모전 문의"}
+              기업 공모전 문의
             </button>
           </div>
         </div>
