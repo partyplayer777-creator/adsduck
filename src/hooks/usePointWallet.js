@@ -4,12 +4,13 @@ import { STORAGE_KEYS, getStoredItem, setStoredItem } from "../storageKeys";
 export const POINT_RULES = {
   signupBonus: 5000,
   contestEntryCost: 1000,
-  postReward: 300,
+  postReward: 100,
   commentReward: 50,
-  likeReward: 100,
+  likeReward: 50,
+  messageCost: 50,
   penaltyHourlyLimit: 300,
-  attendanceStep: 100,
-  attendanceMaxBonus: 1000,
+  attendanceStep: 50,
+  attendanceMaxBonus: 500,
   attendanceMaxBonusDay: 10,
 };
 

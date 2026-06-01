@@ -10,6 +10,7 @@ export const STORAGE_KEYS = {
   pointWallets: "adsduck-point-wallets",
   boardPosts: "adsduck-board-posts",
   penaltyLedger: "adsduck-penalty-ledger",
+  userMessages: "adsduck-user-messages",
 };
 
 export const LEGACY_STORAGE_KEYS = {
@@ -24,6 +25,7 @@ export const LEGACY_STORAGE_KEYS = {
   pointWallets: "ph-point-wallets",
   boardPosts: "ph-board-posts",
   penaltyLedger: "ph-penalty-ledger",
+  userMessages: "ph-user-messages",
 };
 
 export function getStoredItem(storage, key, legacyKey = null) {

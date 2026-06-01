@@ -17,6 +17,11 @@ const BOARD_TABS = [
   },
 ];
 
+const SORT_OPTIONS = [
+  { key: "latest", label: "최신순" },
+  { key: "popular", label: "인기순" },
+];
+
 const SEED_POSTS = [
   {
     id: "seed-anon-1",
@@ -25,6 +30,7 @@ const SEED_POSTS = [
     content: "업로드 첫날에 댓글과 공유가 몰리면 이후 노출도 달라지는 것 같아서 경험담을 듣고 싶습니다.",
     authorId: "seed-user-1",
     authorName: "익명회원",
+    authorPointBalance: 1800,
     createdAt: "2026-05-30T09:00:00.000Z",
     likes: 14,
     likedBy: [],
@@ -33,9 +39,25 @@ const SEED_POSTS = [
     comments: [
       {
         id: "seed-comment-1",
+        authorId: "seed-user-3",
         authorName: "익명회원",
+        authorPointBalance: 2100,
+        targetBalancePreview: 2100,
+        penaltyPoints: 0,
         content: "맞아요. 초반 1시간 지표가 꽤 크게 보이는 편입니다.",
         createdAt: "2026-05-30T10:20:00.000Z",
+        replies: [
+          {
+            id: "seed-reply-1",
+            authorId: "seed-user-4",
+            authorName: "익명회원",
+            authorPointBalance: 1200,
+            targetBalancePreview: 1200,
+            penaltyPoints: 0,
+            content: "그래서 업로드 시간도 같이 맞추는 편이에요.",
+            createdAt: "2026-05-30T10:44:00.000Z",
+          },
+        ],
       },
     ],
   },
@@ -46,6 +68,7 @@ const SEED_POSTS = [
     content: "로고, 제품 컷, 금지 표현, 필수 해시태그가 한 번에 정리된 문서가 있으면 제작 시간이 줄었습니다.",
     authorId: "seed-user-2",
     authorName: "min.creator",
+    authorPointBalance: 2400,
     createdAt: "2026-05-29T14:00:00.000Z",
     likes: 9,
     likedBy: [],
@@ -55,16 +78,13 @@ const SEED_POSTS = [
   },
 ];
 
-const SORT_OPTIONS = [
-  { key: "latest", label: "최신순" },
-  { key: "popular", label: "인기순" },
-];
-
 const REWARD_ITEMS = [
   { label: "글쓰기", value: `+${POINT_RULES.postReward}P` },
   { label: "댓글", value: `+${POINT_RULES.commentReward}P` },
   { label: "좋아요", value: `+${POINT_RULES.likeReward}P` },
+  { label: "메시지", value: `-${POINT_RULES.messageCost}P` },
   { label: "공모전 참가", value: `-${POINT_RULES.contestEntryCost}P` },
+  { label: "익명 벌점", value: `1시간 ${POINT_RULES.penaltyHourlyLimit}P` },
 ];
 
 function readPosts() {
@@ -80,6 +100,14 @@ function readPenaltyLedger() {
     return JSON.parse(getStoredItem(localStorage, STORAGE_KEYS.penaltyLedger) || "{}");
   } catch {
     return {};
+  }
+}
+
+function readMessages() {
+  try {
+    return JSON.parse(getStoredItem(localStorage, STORAGE_KEYS.userMessages) || "[]");
+  } catch {
+    return [];
   }
 }
 
@@ -109,13 +137,27 @@ function getHourlyPenaltyUsed(userId) {
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 }
 
+function countThreads(post) {
+  return (post.comments || []).reduce(
+    (sum, comment) => sum + 1 + (comment.replies || []).length,
+    0
+  );
+}
+
+function makeDisplayName(board, user) {
+  return board === "anonymous" ? "익명회원" : user.display_name || user.email || "사용자";
+}
+
 export default function Board({ authSession, pointAccount, onRequireLogin, onToast }) {
   const [activeBoard, setActiveBoard] = useState("anonymous");
   const [sortMode, setSortMode] = useState("latest");
   const [posts, setPosts] = useState(readPosts);
+  const [messages, setMessages] = useState(readMessages);
   const [draft, setDraft] = useState({ title: "", content: "" });
   const [comments, setComments] = useState({});
+  const [replyDrafts, setReplyDrafts] = useState({});
   const [penaltyAmounts, setPenaltyAmounts] = useState({});
+  const [messageDrafts, setMessageDrafts] = useState({});
   const [chargeAmount, setChargeAmount] = useState("10000");
   const [composerOpen, setComposerOpen] = useState(false);
   const user = authSession?.user || null;
@@ -135,16 +177,31 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
     const filtered = posts.filter((post) => post.board === activeBoard);
     return [...filtered].sort((a, b) => {
       if (sortMode === "popular") {
-        return (b.likes + (b.comments?.length || 0)) - (a.likes + (a.comments?.length || 0));
+        return (b.likes + countThreads(b)) - (a.likes + countThreads(a));
       }
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
   }, [activeBoard, posts, sortMode]);
 
+  const userMessages = useMemo(
+    () => messages
+      .filter((message) => message.fromId === userId || message.toId === userId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    [messages, userId]
+  );
+
   const persistPosts = (updater) => {
     setPosts((prev) => {
       const next = typeof updater === "function" ? updater(prev) : updater;
       setStoredItem(localStorage, STORAGE_KEYS.boardPosts, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const persistMessages = (updater) => {
+    setMessages((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      setStoredItem(localStorage, STORAGE_KEYS.userMessages, JSON.stringify(next));
       return next;
     });
   };
@@ -170,6 +227,15 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
     return true;
   };
 
+  const addPenaltyLedger = (amount) => {
+    const ledger = readPenaltyLedger();
+    ledger[userId] = [
+      ...(ledger[userId] || []).filter((item) => new Date(item.createdAt).getTime() > Date.now() - 60 * 60 * 1000),
+      { amount, createdAt: new Date().toISOString() },
+    ];
+    writePenaltyLedger(ledger);
+  };
+
   const handleCreatePost = (event) => {
     event.preventDefault();
     if (!requireActivity()) return;
@@ -184,14 +250,13 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
       title: draft.title.trim(),
       content: draft.content.trim(),
       authorId: userId,
-      authorName: activeBoard === "anonymous"
-        ? "익명회원"
-        : user.display_name || user.email || "사용자",
+      authorName: makeDisplayName(activeBoard, user),
+      authorPointBalance: wallet?.balance || 0,
+      targetBalancePreview: wallet?.balance || 0,
       createdAt: new Date().toISOString(),
       likes: 0,
       likedBy: [],
       penaltyPoints: 0,
-      targetBalancePreview: wallet?.balance || 0,
       comments: [],
     };
 
@@ -203,14 +268,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
   };
 
   const handleOpenComposer = () => {
-    if (!userId) {
-      onRequireLogin?.("login");
-      return;
-    }
-    if (pointAccount?.isActivityBlocked) {
-      onToast?.("포인트가 마이너스라 게시판 활동이 제한됩니다.");
-      return;
-    }
+    if (!requireActivity()) return;
     setComposerOpen((value) => !value);
   };
 
@@ -245,11 +303,14 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
               ...(post.comments || []),
               {
                 id: `comment-${Date.now()}`,
-                authorName: post.board === "anonymous"
-                  ? "익명회원"
-                  : user.display_name || user.email || "사용자",
+                authorId: userId,
+                authorName: makeDisplayName(post.board, user),
+                authorPointBalance: wallet?.balance || 0,
+                targetBalancePreview: wallet?.balance || 0,
+                penaltyPoints: 0,
                 content,
                 createdAt: new Date().toISOString(),
+                replies: [],
               },
             ],
           }
@@ -260,21 +321,98 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
     onToast?.(`댓글 보상 ${formatPoint(POINT_RULES.commentReward)} 지급`);
   };
 
-  const handlePenalty = (postId) => {
+  const handleReply = (postId, commentId, board) => {
+    if (!requireActivity()) return;
+    const draftKey = `reply:${commentId}`;
+    const content = (replyDrafts[draftKey] || "").trim();
+    if (!content) return;
+
+    persistPosts((prev) => prev.map((post) => (
+      post.id === postId
+        ? {
+            ...post,
+            comments: (post.comments || []).map((comment) => (
+              comment.id === commentId
+                ? {
+                    ...comment,
+                    replies: [
+                      ...(comment.replies || []),
+                      {
+                        id: `reply-${Date.now()}`,
+                        authorId: userId,
+                        authorName: makeDisplayName(board, user),
+                        authorPointBalance: wallet?.balance || 0,
+                        targetBalancePreview: wallet?.balance || 0,
+                        penaltyPoints: 0,
+                        content,
+                        createdAt: new Date().toISOString(),
+                      },
+                    ],
+                  }
+                : comment
+            )),
+          }
+        : post
+    )));
+    setReplyDrafts((prev) => ({ ...prev, [draftKey]: "" }));
+    pointAccount?.addPoints(POINT_RULES.commentReward, "대댓글 작성 보상");
+    onToast?.(`대댓글 보상 ${formatPoint(POINT_RULES.commentReward)} 지급`);
+  };
+
+  const applyPenaltyToContent = (target, nextBalance, amount) => {
+    persistPosts((prev) => prev.map((post) => {
+      if (post.id !== target.postId) return post;
+      if (target.type === "post") {
+        return {
+          ...post,
+          penaltyPoints: (post.penaltyPoints || 0) + amount,
+          targetBalancePreview: nextBalance,
+        };
+      }
+      return {
+        ...post,
+        comments: (post.comments || []).map((comment) => {
+          if (comment.id !== target.commentId) return comment;
+          if (target.type === "comment") {
+            return {
+              ...comment,
+              penaltyPoints: (comment.penaltyPoints || 0) + amount,
+              targetBalancePreview: nextBalance,
+            };
+          }
+          return {
+            ...comment,
+            replies: (comment.replies || []).map((reply) => (
+              reply.id === target.replyId
+                ? {
+                    ...reply,
+                    penaltyPoints: (reply.penaltyPoints || 0) + amount,
+                    targetBalancePreview: nextBalance,
+                  }
+                : reply
+            )),
+          };
+        }),
+      };
+    }));
+  };
+
+  const handlePenalty = (target) => {
     if (!requireActivity()) return;
     if (activeBoard !== "anonymous") {
       onToast?.("벌점은 익명 게시판에서만 줄 수 있습니다.");
       return;
     }
 
-    const post = posts.find((item) => item.id === postId);
-    const amount = Math.max(0, Number(penaltyAmounts[postId]) || 0);
-    if (!post || amount <= 0) {
+    const amount = Math.max(0, Number(penaltyAmounts[target.key]) || 0);
+    const targetAuthorId = target.authorId || "";
+    const fallbackBalance = Number(target.balance || 0);
+    if (!targetAuthorId || amount <= 0) {
       onToast?.("벌점으로 사용할 포인트를 입력해주세요.");
       return;
     }
-    if (post.authorId === userId) {
-      onToast?.("내 게시글에는 벌점을 줄 수 없습니다.");
+    if (targetAuthorId === userId) {
+      onToast?.("내 글이나 댓글에는 벌점을 줄 수 없습니다.");
       return;
     }
     if (hourlyPenaltyUsed + amount > POINT_RULES.penaltyHourlyLimit) {
@@ -287,33 +425,47 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
       onToast?.(spendResult?.error || "포인트가 부족합니다.");
       return;
     }
-    const targetResult = pointAccount?.penalizeUser?.(
-      post.authorId,
-      amount,
-      post.targetBalancePreview
-    );
+    const targetResult = pointAccount?.penalizeUser?.(targetAuthorId, amount, fallbackBalance);
     if (!targetResult?.ok) {
       onToast?.(targetResult?.error || "상대 벌점 적용에 실패했습니다.");
       return;
     }
 
-    persistPosts((prev) => prev.map((item) => (
-      item.id === postId
-        ? {
-            ...item,
-            penaltyPoints: (item.penaltyPoints || 0) + amount,
-            targetBalancePreview: Number(item.targetBalancePreview || 0) - amount,
-          }
-        : item
-    )));
-    const ledger = readPenaltyLedger();
-    ledger[userId] = [
-      ...(ledger[userId] || []).filter((item) => new Date(item.createdAt).getTime() > Date.now() - 60 * 60 * 1000),
-      { amount, createdAt: new Date().toISOString() },
-    ];
-    writePenaltyLedger(ledger);
-    setPenaltyAmounts((prev) => ({ ...prev, [postId]: "" }));
+    applyPenaltyToContent(target, targetResult.wallet?.balance ?? fallbackBalance - amount, amount);
+    addPenaltyLedger(amount);
+    setPenaltyAmounts((prev) => ({ ...prev, [target.key]: "" }));
     onToast?.(`상대에게 벌점 ${formatPoint(amount)} 적용`);
+  };
+
+  const handleSendMessage = (target, draftKey) => {
+    if (!requireActivity()) return;
+    const content = (messageDrafts[draftKey] || "").trim();
+    if (!content) return;
+    if (!target.authorId || target.authorId === userId) {
+      onToast?.("본인에게는 메시지를 보낼 수 없습니다.");
+      return;
+    }
+
+    const spendResult = pointAccount?.spendPoints(POINT_RULES.messageCost, "유저 메시지 전송");
+    if (!spendResult?.ok) {
+      onToast?.(spendResult?.error || "포인트가 부족합니다.");
+      return;
+    }
+
+    persistMessages((prev) => [
+      {
+        id: `message-${Date.now()}`,
+        fromId: userId,
+        fromName: user.display_name || user.email || "사용자",
+        toId: target.authorId,
+        toName: target.authorName || "사용자",
+        content,
+        createdAt: new Date().toISOString(),
+      },
+      ...prev,
+    ].slice(0, 80));
+    setMessageDrafts((prev) => ({ ...prev, [draftKey]: "" }));
+    onToast?.(`메시지를 보냈습니다. ${formatPoint(POINT_RULES.messageCost)} 사용`);
   };
 
   const handleCharge = () => {
@@ -338,6 +490,81 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
     );
   };
 
+  const renderUserLine = (item, fallbackBalance = 0) => (
+    (() => {
+      const balance = item.authorId === userId && wallet
+        ? wallet.balance
+        : item?.targetBalancePreview ?? item?.authorPointBalance ?? fallbackBalance;
+      return (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+          <span className="font-black text-gray-700 dark:text-gray-200">{item.authorName || "사용자"}</span>
+          <span className="rounded-md bg-gray-100 px-2 py-0.5 font-black text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+            {formatPoint(balance)}
+          </span>
+          {item.createdAt && (
+            <span className="text-gray-400 dark:text-gray-500">{formatDate(item.createdAt)}</span>
+          )}
+        </div>
+      );
+    })()
+  );
+
+  const renderPenaltyBox = (target) => (
+    <div className="mt-3 rounded-lg border border-red-100 bg-red-50/60 p-3 dark:border-red-900/60 dark:bg-red-950/20">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-black text-red-600 dark:text-red-300">익명 벌점</p>
+          <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
+            내 포인트를 사용한 만큼 상대 포인트가 차감됩니다.
+          </p>
+        </div>
+        <div className="flex gap-2 sm:w-[260px]">
+          <input
+            value={penaltyAmounts[target.key] || ""}
+            onChange={(event) => setPenaltyAmounts((prev) => ({ ...prev, [target.key]: event.target.value }))}
+            type="number"
+            min="1"
+            max={POINT_RULES.penaltyHourlyLimit}
+            placeholder="포인트"
+            className="h-11 min-w-0 flex-1 rounded-lg border border-red-200 bg-white px-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-red-400 dark:border-red-900 dark:bg-gray-950 dark:text-gray-100"
+            aria-label="벌점 포인트"
+          />
+          <button
+            onClick={() => handlePenalty(target)}
+            className="h-11 rounded-lg border-none bg-red-500 px-4 text-sm font-black text-white"
+          >
+            적용
+          </button>
+        </div>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+        <span className="font-semibold text-red-500 dark:text-red-300">
+          1시간 사용 {formatPoint(hourlyPenaltyUsed)} / {formatPoint(POINT_RULES.penaltyHourlyLimit)}
+        </span>
+        <span className="text-gray-500 dark:text-gray-400">
+          누적 벌점 {formatPoint(target.penaltyPoints)}
+        </span>
+      </div>
+    </div>
+  );
+
+  const renderMessageInput = (target, draftKey) => (
+    <div className="mt-2 flex gap-2">
+      <input
+        value={messageDrafts[draftKey] || ""}
+        onChange={(event) => setMessageDrafts((prev) => ({ ...prev, [draftKey]: event.target.value }))}
+        className="h-10 min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-900 outline-none focus:ring-2 focus:ring-amber-400 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+        placeholder={`메시지 보내기 -${formatPoint(POINT_RULES.messageCost)}`}
+      />
+      <button
+        onClick={() => handleSendMessage(target, draftKey)}
+        className="h-10 rounded-lg border-none bg-gray-900 px-3 text-xs font-black text-white dark:bg-white dark:text-gray-950"
+      >
+        전송
+      </button>
+    </div>
+  );
+
   return (
     <section className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
       <div className="mb-5 flex flex-col gap-4 sm:mb-7 sm:flex-row sm:items-end sm:justify-between">
@@ -358,7 +585,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_312px] lg:items-start">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
         <main className="min-w-0 space-y-4">
           <div className="sticky top-[var(--header-h,64px)] z-20 -mx-4 border-y border-gray-200 bg-[#f8fafc]/95 px-4 py-3 backdrop-blur-md dark:border-gray-800 dark:bg-gray-950/95 sm:mx-0 sm:rounded-lg sm:border">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -490,119 +717,138 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
           )}
 
           <div className="space-y-3">
-            {visiblePosts.map((post) => (
-              <article
-                key={post.id}
-                className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition hover:border-gray-300 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700 sm:p-5"
-              >
-                <div className="flex gap-3">
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100 text-sm font-black text-gray-500 dark:bg-gray-800 dark:text-gray-300">
-                    {post.board === "anonymous" ? "익" : "실"}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                      <span className="font-black text-gray-700 dark:text-gray-200">{post.authorName}</span>
-                      <span className="text-gray-400 dark:text-gray-500">{formatDate(post.createdAt)}</span>
-                      {post.board === "anonymous" && (
-                        <span className="rounded-md bg-red-50 px-2 py-0.5 font-bold text-red-500 dark:bg-red-900/20">
-                          익명 벌점 활성
-                        </span>
-                      )}
+            {visiblePosts.map((post) => {
+              const postPenaltyTarget = {
+                type: "post",
+                key: `post:${post.id}`,
+                postId: post.id,
+                authorId: post.authorId,
+                authorName: post.authorName,
+                balance: post.targetBalancePreview ?? post.authorPointBalance,
+                penaltyPoints: post.penaltyPoints || 0,
+              };
+              return (
+                <article
+                  key={post.id}
+                  className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition hover:border-gray-300 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700 sm:p-5"
+                >
+                  <div className="flex gap-3">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100 text-sm font-black text-gray-500 dark:bg-gray-800 dark:text-gray-300">
+                      {post.board === "anonymous" ? "익" : "실"}
                     </div>
-                    <h3 className="mt-2 text-lg font-black leading-snug text-gray-950 dark:text-white sm:text-xl">
-                      {post.title}
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
-                      {post.content}
-                    </p>
+                    <div className="min-w-0 flex-1">
+                      {renderUserLine(post)}
+                      <h3 className="mt-2 text-lg font-black leading-snug text-gray-950 dark:text-white sm:text-xl">
+                        {post.title}
+                      </h3>
+                      <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
+                        {post.content}
+                      </p>
+                      {userId && renderMessageInput(postPenaltyTarget, `message:post:${post.id}`)}
+                    </div>
                   </div>
-                </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-                  <button
-                    onClick={() => handleLike(post.id)}
-                    className="h-11 rounded-lg border border-gray-200 bg-white px-3 text-sm font-black text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:bg-gray-800"
-                  >
-                    좋아요 {post.likes}
-                    <span className="ml-1 text-amber-500">+{formatPoint(POINT_RULES.likeReward)}</span>
-                  </button>
-                  <div className="flex h-11 items-center justify-center rounded-lg border border-gray-200 px-3 text-sm font-black text-gray-600 dark:border-gray-800 dark:text-gray-300">
-                    댓글 {(post.comments || []).length}
-                  </div>
-                </div>
-
-                {post.board === "anonymous" && (
-                  <div className="mt-3 rounded-lg border border-red-100 bg-red-50/60 p-3 dark:border-red-900/60 dark:bg-red-950/20">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-black text-red-600 dark:text-red-300">익명 벌점</p>
-                        <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
-                          내 포인트를 사용한 만큼 상대 포인트가 차감됩니다.
-                        </p>
-                      </div>
-                      <div className="flex gap-2 sm:w-[260px]">
-                        <input
-                          value={penaltyAmounts[post.id] || ""}
-                          onChange={(event) => setPenaltyAmounts((prev) => ({ ...prev, [post.id]: event.target.value }))}
-                          type="number"
-                          min="1"
-                          max={POINT_RULES.penaltyHourlyLimit}
-                          placeholder="포인트"
-                          className="h-11 min-w-0 flex-1 rounded-lg border border-red-200 bg-white px-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-red-400 dark:border-red-900 dark:bg-gray-950 dark:text-gray-100"
-                          aria-label="벌점 포인트"
-                        />
-                        <button
-                          onClick={() => handlePenalty(post.id)}
-                          className="h-11 rounded-lg border-none bg-red-500 px-4 text-sm font-black text-white"
-                        >
-                          적용
-                        </button>
-                      </div>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
-                      <span className="font-semibold text-red-500 dark:text-red-300">
-                        1시간 사용 {formatPoint(hourlyPenaltyUsed)} / {formatPoint(POINT_RULES.penaltyHourlyLimit)}
-                      </span>
-                      <span className="text-gray-500 dark:text-gray-400">
-                        누적 벌점 {formatPoint(post.penaltyPoints)}
-                      </span>
-                      <span className="text-gray-500 dark:text-gray-400">
-                        상대 예상 포인트 {formatPoint(post.targetBalancePreview)}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-800">
-                  {(post.comments || []).length > 0 && (
-                    <div className="mb-3 space-y-2">
-                      {(post.comments || []).slice(-3).map((comment) => (
-                        <div key={comment.id} className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/70">
-                          <p className="text-xs font-bold text-gray-400 dark:text-gray-500">
-                            {comment.authorName} · {formatDate(comment.createdAt)}
-                          </p>
-                          <p className="mt-1 text-sm leading-5 text-gray-700 dark:text-gray-300">{comment.content}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex gap-2">
-                    <input
-                      value={comments[post.id] || ""}
-                      onChange={(event) => setComments((prev) => ({ ...prev, [post.id]: event.target.value }))}
-                      className="h-11 min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-amber-400 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-                      placeholder="댓글 작성"
-                    />
+                  <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
                     <button
-                      onClick={() => handleComment(post.id)}
-                      className="h-11 rounded-lg border-none bg-gray-950 px-3 text-sm font-black text-white dark:bg-white dark:text-gray-950 sm:px-4"
+                      onClick={() => handleLike(post.id)}
+                      className="h-11 rounded-lg border border-gray-200 bg-white px-3 text-sm font-black text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:bg-gray-800"
                     >
-                      +{formatPoint(POINT_RULES.commentReward)}
+                      좋아요 {post.likes}
+                      <span className="ml-1 text-amber-500">+{formatPoint(POINT_RULES.likeReward)}</span>
                     </button>
+                    <div className="flex h-11 items-center justify-center rounded-lg border border-gray-200 px-3 text-sm font-black text-gray-600 dark:border-gray-800 dark:text-gray-300">
+                      댓글 {countThreads(post)}
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))}
+
+                  {post.board === "anonymous" && renderPenaltyBox(postPenaltyTarget)}
+
+                  <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-800">
+                    {(post.comments || []).length > 0 && (
+                      <div className="mb-3 space-y-3">
+                        {(post.comments || []).map((comment) => {
+                          const commentAuthorId = comment.authorId || post.authorId;
+                          const commentTarget = {
+                            type: "comment",
+                            key: `comment:${comment.id}`,
+                            postId: post.id,
+                            commentId: comment.id,
+                            authorId: commentAuthorId,
+                            authorName: comment.authorName,
+                            balance: comment.targetBalancePreview ?? comment.authorPointBalance ?? post.targetBalancePreview,
+                            penaltyPoints: comment.penaltyPoints || 0,
+                          };
+                          return (
+                            <div key={comment.id} className="rounded-lg bg-gray-50 px-3 py-3 dark:bg-gray-800/70">
+                              {renderUserLine({ ...comment, authorId: commentAuthorId }, post.targetBalancePreview)}
+                              <p className="mt-1 text-sm leading-5 text-gray-700 dark:text-gray-300">{comment.content}</p>
+                              {userId && renderMessageInput(commentTarget, `message:comment:${comment.id}`)}
+                              {post.board === "anonymous" && renderPenaltyBox(commentTarget)}
+
+                              {(comment.replies || []).length > 0 && (
+                                <div className="mt-3 space-y-2 border-l-2 border-gray-200 pl-3 dark:border-gray-700">
+                                  {(comment.replies || []).map((reply) => {
+                                    const replyAuthorId = reply.authorId || commentAuthorId;
+                                    const replyTarget = {
+                                      type: "reply",
+                                      key: `reply:${reply.id}`,
+                                      postId: post.id,
+                                      commentId: comment.id,
+                                      replyId: reply.id,
+                                      authorId: replyAuthorId,
+                                      authorName: reply.authorName,
+                                      balance: reply.targetBalancePreview ?? reply.authorPointBalance ?? commentTarget.balance,
+                                      penaltyPoints: reply.penaltyPoints || 0,
+                                    };
+                                    return (
+                                      <div key={reply.id} className="rounded-lg bg-white px-3 py-2 dark:bg-gray-900">
+                                        {renderUserLine({ ...reply, authorId: replyAuthorId }, commentTarget.balance)}
+                                        <p className="mt-1 text-sm leading-5 text-gray-700 dark:text-gray-300">{reply.content}</p>
+                                        {userId && renderMessageInput(replyTarget, `message:reply:${reply.id}`)}
+                                        {post.board === "anonymous" && renderPenaltyBox(replyTarget)}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              <div className="mt-3 flex gap-2">
+                                <input
+                                  value={replyDrafts[`reply:${comment.id}`] || ""}
+                                  onChange={(event) => setReplyDrafts((prev) => ({ ...prev, [`reply:${comment.id}`]: event.target.value }))}
+                                  className="h-10 min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-900 outline-none focus:ring-2 focus:ring-amber-400 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                                  placeholder="대댓글 작성"
+                                />
+                                <button
+                                  onClick={() => handleReply(post.id, comment.id, post.board)}
+                                  className="h-10 rounded-lg border-none bg-gray-900 px-3 text-xs font-black text-white dark:bg-white dark:text-gray-950"
+                                >
+                                  +{formatPoint(POINT_RULES.commentReward)}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <input
+                        value={comments[post.id] || ""}
+                        onChange={(event) => setComments((prev) => ({ ...prev, [post.id]: event.target.value }))}
+                        className="h-11 min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-amber-400 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                        placeholder="댓글 작성"
+                      />
+                      <button
+                        onClick={() => handleComment(post.id)}
+                        className="h-11 rounded-lg border-none bg-gray-950 px-3 text-sm font-black text-white dark:bg-white dark:text-gray-950 sm:px-4"
+                      >
+                        +{formatPoint(POINT_RULES.commentReward)}
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </main>
 
@@ -626,7 +872,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
                   출석 보너스 받기
                 </button>
                 <p className="mt-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
-                  연속 출석 {wallet?.attendanceDay || 0}일 · 10일차부터 1,000P 고정
+                  연속 출석 {wallet?.attendanceDay || 0}일 · 10일차부터 500P 고정
                 </p>
                 <div className="mt-4 flex gap-2">
                   <input
@@ -657,6 +903,30 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
           </div>
 
           <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <p className="text-sm font-black text-gray-950 dark:text-white">메시지함</p>
+            <p className="mt-1 text-xs font-semibold text-gray-500 dark:text-gray-400">
+              메시지 전송 시 {formatPoint(POINT_RULES.messageCost)}가 사용됩니다.
+            </p>
+            <div className="mt-3 max-h-64 space-y-2 overflow-y-auto">
+              {userId && userMessages.length > 0 ? (
+                userMessages.slice(0, 8).map((message) => (
+                  <div key={message.id} className="rounded-lg bg-gray-50 p-3 dark:bg-gray-800/70">
+                    <p className="text-xs font-black text-gray-700 dark:text-gray-200">
+                      {message.fromId === userId ? `나 -> ${message.toName}` : `${message.fromName} -> 나`}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-300">{message.content}</p>
+                    <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">{formatDate(message.createdAt)}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="rounded-lg bg-gray-50 p-3 text-xs font-semibold text-gray-500 dark:bg-gray-800/70 dark:text-gray-400">
+                  아직 메시지가 없습니다.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <p className="text-sm font-black text-gray-950 dark:text-white">포인트 정책</p>
             <div className="mt-3 grid grid-cols-2 gap-2">
               {REWARD_ITEMS.map((item) => (
@@ -667,7 +937,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
               ))}
             </div>
             <div className="mt-3 rounded-lg bg-red-50 p-3 text-xs font-semibold leading-5 text-red-600 dark:bg-red-950/30 dark:text-red-300">
-              익명 게시글에는 내 포인트를 사용해 상대에게 벌점을 줄 수 있으며, 1시간 최대 {formatPoint(POINT_RULES.penaltyHourlyLimit)}까지 가능합니다.
+              익명 게시글, 댓글, 대댓글에는 내 포인트를 사용해 상대에게 벌점을 줄 수 있습니다.
             </div>
           </div>
         </aside>
