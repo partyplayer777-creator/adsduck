@@ -134,7 +134,7 @@ export default function Hero({ contests, onScrollToContests }) {
               onClick={handleCompanyContact}
               className="bg-transparent border-none text-xs font-bold cursor-pointer transition-colors text-white/35 hover:text-white/60"
             >
-              기업 공모전 문의
+              공모전 문의
             </button>
           </div>
         </div>

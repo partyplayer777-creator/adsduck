@@ -53,7 +53,7 @@ export default function Header({ onNavigate, currentPage, darkMode, onToggleDark
           ? "glass border-b border-gray-200/50 dark:border-gray-800/50 shadow-sm"
           : isOverHero
           ? "bg-gradient-to-r from-gray-950 via-gray-900 to-amber-950"
-          : "bg-transparent"
+          : "bg-white/95 dark:bg-gray-950/95 border-b border-gray-200/70 dark:border-gray-800/70 shadow-sm backdrop-blur-md md:bg-transparent md:dark:bg-transparent md:border-transparent md:shadow-none md:backdrop-blur-0"
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -167,10 +167,10 @@ export default function Header({ onNavigate, currentPage, darkMode, onToggleDark
             {/* Dark mode toggle (mobile) */}
             <button
               onClick={onToggleDark}
-              className={`p-2 rounded-xl transition-all bg-transparent border-none cursor-pointer ${
+              className={`p-2 rounded-xl transition-all border-none cursor-pointer ${
                 isOverHero
-                  ? "text-white/80 hover:text-white hover:bg-white/10"
-                  : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  ? "bg-white/10 text-white hover:text-white hover:bg-white/20"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
               }`}
               aria-label={darkMode ? "라이트 모드" : "다크 모드"}
             >
@@ -187,10 +187,10 @@ export default function Header({ onNavigate, currentPage, darkMode, onToggleDark
 
             {/* Burger */}
             <button
-              className={`p-2 rounded-xl bg-transparent border-none cursor-pointer transition-colors ${
+              className={`p-2 rounded-xl border-none cursor-pointer transition-colors ${
                 isOverHero
-                  ? "text-white/80 hover:text-white hover:bg-white/10"
-                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  ? "bg-white/10 text-white hover:text-white hover:bg-white/20"
+                  : "bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
               }`}
               onClick={() => { setMobileOpen(true); setHidden(false); }}
               aria-label="메뉴 열기"
