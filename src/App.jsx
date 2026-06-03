@@ -360,6 +360,7 @@ export default function App() {
             pointAccount={pointAccount}
             onRequireLogin={setAuthDialogMode}
             onToast={addToast}
+            onOpenTerms={() => handleNavigate("terms", { section: "points" })}
           />
         )}
         {page === "organizer" && (

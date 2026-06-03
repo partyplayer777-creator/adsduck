@@ -1,5 +1,6 @@
 import { requireAuth } from "../../_auth.js";
 import { getSupabase, sendError, sendJson } from "../../_supabase.js";
+import { updateSharedBoardPost } from "../_store.js";
 
 const VALID_BOARDS = new Set(["anonymous", "realname"]);
 
@@ -36,31 +37,11 @@ export default async function handler(req, res) {
       return;
     }
 
+    normalized.authorId = normalized.authorId || authPayload.sub;
+
     const supabase = getSupabase();
-    const { data: existing, error: findError } = await supabase
-      .from("board_posts")
-      .select("payload")
-      .eq("id", postId)
-      .single();
-    if (findError) throw findError;
-
-    normalized.authorId = existing.payload?.authorId || normalized.authorId || authPayload.sub;
-    normalized.authorName = existing.payload?.authorName || normalized.authorName || "사용자";
-    normalized.createdAt = existing.payload?.createdAt || normalized.createdAt || new Date().toISOString();
-
-    const { data, error } = await supabase
-      .from("board_posts")
-      .update({
-        board,
-        payload: normalized,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", postId)
-      .select("payload")
-      .single();
-    if (error) throw error;
-
-    sendJson(res, 200, { ok: true, post: data.payload });
+    const result = await updateSharedBoardPost(supabase, postId, board, normalized);
+    sendJson(res, 200, { ok: true, post: result.post, source: result.source });
   } catch (error) {
     sendError(res, error);
   }

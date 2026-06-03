@@ -43,7 +43,7 @@ export default async function handler(req, res) {
       return;
     }
 
-    const startUrl = process.env.PASS_VERIFICATION_START_URL || "";
+    const startUrl = String(process.env.PASS_VERIFICATION_START_URL || "").trim();
     if (!startUrl) throw makeError(501, "PASS_VERIFICATION_START_URL is not configured.");
 
     const user = optionalAuth(req);
@@ -54,7 +54,7 @@ export default async function handler(req, res) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        clientId: process.env.PASS_VERIFICATION_CLIENT_ID || "",
+        clientId: String(process.env.PASS_VERIFICATION_CLIENT_ID || "").trim(),
         returnUrl: req.body?.returnUrl || "https://adsduck.com/?organizer=1",
         context: {
           purpose: "adsduck-organizer-verification",

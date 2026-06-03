@@ -1,5 +1,5 @@
 export function getRequestOrigin(req) {
-  const configuredOrigin = String(process.env.WEB_ORIGIN || "").replace(/\/$/, "");
+  const configuredOrigin = String(process.env.WEB_ORIGIN || "").trim().replace(/\/$/, "");
   if (configuredOrigin) return configuredOrigin;
 
   const proto = String(req.headers["x-forwarded-proto"] || "https").split(",")[0].trim();
@@ -8,7 +8,7 @@ export function getRequestOrigin(req) {
 }
 
 export async function createCheckoutSession({ productId, user, returnUrl, context = {} }) {
-  const baseUrl = String(process.env.PAYMENT_KIT_BASE_URL || "").replace(/\/$/, "");
+  const baseUrl = String(process.env.PAYMENT_KIT_BASE_URL || "").trim().replace(/\/$/, "");
   if (!baseUrl) {
     const error = new Error("PAYMENT_KIT_BASE_URL is not configured.");
     error.status = 503;
@@ -19,7 +19,7 @@ export async function createCheckoutSession({ productId, user, returnUrl, contex
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      projectKey: process.env.PAYMENT_KIT_PROJECT_KEY || "adsduck",
+      projectKey: String(process.env.PAYMENT_KIT_PROJECT_KEY || "adsduck").trim(),
       productId,
       returnUrl,
       context: {

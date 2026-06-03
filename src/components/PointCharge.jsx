@@ -30,7 +30,7 @@ function WalletIcon({ className = "h-4 w-4" }) {
   );
 }
 
-export default function PointCharge({ authSession, pointAccount, onRequireLogin, onToast }) {
+export default function PointCharge({ authSession, pointAccount, onRequireLogin, onToast, onOpenTerms }) {
   const [amount, setAmount] = useState("10000");
   const [loading, setLoading] = useState(false);
   const user = authSession?.user || null;
@@ -140,6 +140,14 @@ export default function PointCharge({ authSession, pointAccount, onRequireLogin,
                 <span className="text-sm font-black text-amber-600 dark:text-amber-300">{formatPoint(validAmount ? normalizedAmount : 0)}</span>
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={() => onOpenTerms?.()}
+              className="inline-flex items-center gap-1.5 border-none bg-transparent p-0 text-xs font-bold text-gray-500 transition hover:text-amber-600 dark:text-gray-400 dark:hover:text-amber-300"
+            >
+              포인트 운영정책 보기
+            </button>
           </form>
         </main>
 

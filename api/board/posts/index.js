@@ -1,5 +1,6 @@
 import { requireAuth } from "../../_auth.js";
 import { getSupabase, sendError, sendJson } from "../../_supabase.js";
+import { getSharedBoardPosts, insertSharedBoardPost } from "../_store.js";
 
 const VALID_BOARDS = new Set(["anonymous", "realname"]);
 
@@ -37,19 +38,11 @@ export default async function handler(req, res) {
 
     if (req.method === "GET") {
       const board = VALID_BOARDS.has(req.query.board) ? req.query.board : null;
-      let query = supabase
-        .from("board_posts")
-        .select("id, board, payload, created_at, updated_at")
-        .order("created_at", { ascending: false })
-        .limit(200);
-      if (board) query = query.eq("board", board);
-
-      const { data, error } = await query;
-      if (error) throw error;
+      const result = await getSharedBoardPosts(supabase, board);
       sendJson(res, 200, {
         ok: true,
-        posts: (data || []).map((row) => row.payload),
-        source: "supabase",
+        posts: result.posts,
+        source: result.source,
       });
       return;
     }
@@ -64,13 +57,8 @@ export default async function handler(req, res) {
         payload,
       };
 
-      const { data, error } = await supabase
-        .from("board_posts")
-        .insert(row)
-        .select("payload")
-        .single();
-      if (error) throw error;
-      sendJson(res, 201, { ok: true, post: data.payload });
+      const result = await insertSharedBoardPost(supabase, row);
+      sendJson(res, 201, { ok: true, post: result.post, source: result.source });
       return;
     }
 

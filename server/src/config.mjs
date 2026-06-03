@@ -1,17 +1,23 @@
 import "dotenv/config";
 
 function trimTrailingSlash(value) {
-  return String(value || "").replace(/\/$/, "");
+  return String(value || "").trim().replace(/\/$/, "");
 }
 
 export const config = {
   port: Number(process.env.PORT || 4100),
   publicBaseUrl: trimTrailingSlash(process.env.PUBLIC_BASE_URL || `http://localhost:${process.env.PORT || 4100}`),
   webOrigin: trimTrailingSlash(process.env.WEB_ORIGIN || "http://localhost:5173"),
-  supabaseUrl: trimTrailingSlash(process.env.SUPABASE_URL || ""),
-  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+  supabaseUrl: trimTrailingSlash(process.env.SUPABASE_URL || process.env.project_URL || ""),
+  supabaseServiceRoleKey: String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.service_role || "").trim(),
   auth: {
-    accessTokenSecret: process.env.AUTH_ACCESS_TOKEN_SECRET || "",
+    accessTokenSecret: String(
+      process.env.AUTH_ACCESS_TOKEN_SECRET ||
+      process.env.Lagacy_JWT_SECRET ||
+      process.env.LEGACY_JWT_SECRET ||
+      process.env.jwt_keys ||
+      ""
+    ).trim(),
     issuer: process.env.AUTH_TOKEN_ISSUER || "",
     clientId: process.env.AUTH_CLIENT_ID || "adsduck",
   },

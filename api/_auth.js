@@ -11,7 +11,13 @@ function parseJsonPart(value) {
 }
 
 export function verifyAccessToken(token) {
-  const secret = process.env.AUTH_ACCESS_TOKEN_SECRET || "";
+  const secret = String(
+    process.env.AUTH_ACCESS_TOKEN_SECRET ||
+    process.env.Lagacy_JWT_SECRET ||
+    process.env.LEGACY_JWT_SECRET ||
+    process.env.jwt_keys ||
+    ""
+  ).trim();
   if (!secret) {
     const error = new Error("Auth is not configured.");
     error.status = 503;

@@ -10,6 +10,10 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.env
+.env.*
+!.env.example
+!server/.env.example
 *.local
 
 # Editor directories and files
@@ -30,3 +34,4 @@ dist-ssr
 390x844-*.png
 .adsduck-api-test*.log
 .vite-dev*.log
+..txt

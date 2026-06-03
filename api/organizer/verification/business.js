@@ -27,7 +27,7 @@ function parseJson(text) {
 }
 
 async function verifyBusinessOrganizer(payload = {}) {
-  const serviceKey = process.env.NTS_BUSINESS_SERVICE_KEY || "";
+  const serviceKey = String(process.env.NTS_BUSINESS_SERVICE_KEY || "").trim();
   if (!serviceKey) {
     throw makeError(503, "NTS_BUSINESS_SERVICE_KEY is not configured.");
   }
@@ -41,7 +41,7 @@ async function verifyBusinessOrganizer(payload = {}) {
   if (startDate.length !== 8) throw makeError(400, "startDate must be YYYYMMDD.");
   if (!representativeName) throw makeError(400, "representativeName is required.");
 
-  const baseUrl = String(process.env.NTS_BUSINESS_API_BASE_URL || "https://api.odcloud.kr").replace(/\/$/, "");
+  const baseUrl = String(process.env.NTS_BUSINESS_API_BASE_URL || "https://api.odcloud.kr").trim().replace(/\/$/, "");
   const url = new URL("/api/nts-businessman/v1/validate", baseUrl);
   url.searchParams.set("serviceKey", serviceKey);
   url.searchParams.set("returnType", "JSON");

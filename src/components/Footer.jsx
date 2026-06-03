@@ -114,6 +114,14 @@ export default function Footer({ onNavigate, onScrollToContests, darkMode }) {
                   콘테스트 이용약관
                 </button>
               </li>
+              <li>
+                <button
+                  onClick={() => onNavigate?.("terms", { section: "points" })}
+                  className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors bg-transparent border-none cursor-pointer p-0 text-sm text-gray-400 dark:text-gray-500 font-normal text-left"
+                >
+                  포인트 운영정책
+                </button>
+              </li>
               <li className="flex items-center gap-2">
                 <span className="text-gray-300 dark:text-gray-600">개인정보처리방침</span>
                 <span className="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 px-1.5 py-0.5 rounded font-medium">준비중</span>
