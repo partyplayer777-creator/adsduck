@@ -7,7 +7,7 @@ function UrgentLogo({ contest }) {
   const [error, setError] = useState(false);
   if (error) {
     return (
-      <div className="w-9 h-9 rounded-xl bg-red-500 flex items-center justify-center text-white font-black text-sm flex-shrink-0">
+      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-red-500 text-sm font-bold text-white">
         {contest.company.charAt(0)}
       </div>
     );
@@ -16,7 +16,7 @@ function UrgentLogo({ contest }) {
     <img
       src={contest.logo}
       alt={contest.company}
-      className="w-9 h-9 rounded-xl shadow-sm flex-shrink-0"
+      className="h-8 w-8 flex-shrink-0 rounded-md"
       onError={() => setError(true)}
     />
   );
@@ -26,7 +26,7 @@ function RecentLogo({ contest }) {
   const [error, setError] = useState(false);
   if (error) {
     return (
-      <div className="w-9 h-9 rounded-xl bg-amber-400 flex items-center justify-center text-white font-black text-sm flex-shrink-0">
+      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-amber-400 text-sm font-bold text-white">
         {contest.company.charAt(0)}
       </div>
     );
@@ -35,24 +35,24 @@ function RecentLogo({ contest }) {
     <img
       src={contest.logo}
       alt={contest.company}
-      className="w-9 h-9 rounded-xl shadow-sm flex-shrink-0"
+      className="h-8 w-8 flex-shrink-0 rounded-md"
       onError={() => setError(true)}
     />
   );
 }
 
-const CHIP_BASE = "inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 text-xs font-semibold rounded-lg border border-amber-200 dark:border-amber-800/50";
+const CHIP_BASE = "inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:border-amber-800/50 dark:bg-amber-900/20 dark:text-amber-300";
 const CHIP_X = "ml-0.5 text-amber-400 hover:text-amber-700 dark:hover:text-amber-200 bg-transparent border-none cursor-pointer p-0 leading-none";
 
-// 카테고리별 활성 탭 accent 색상
+// 60/30/10: neutral surface, content, amber action color.
 const categoryActiveStyle = {
-  "전체":      "bg-amber-500 text-white shadow-lg shadow-amber-500/25",
-  "SNS 마케팅": "bg-blue-500 text-white shadow-lg shadow-blue-500/25",
-  "리뷰 콘텐츠": "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25",
-  "인스타그램":  "bg-pink-500 text-white shadow-lg shadow-pink-500/25",
-  "유튜브":    "bg-red-600 text-white shadow-lg shadow-red-500/25",
-  "틱톡":     "bg-violet-600 text-white shadow-lg shadow-violet-500/25",
-  "멀티 채널": "bg-amber-500 text-white shadow-lg shadow-amber-500/25",
+  "전체": "bg-amber-400 text-gray-950 border-amber-400",
+  "SNS 마케팅": "bg-amber-400 text-gray-950 border-amber-400",
+  "리뷰 콘텐츠": "bg-amber-400 text-gray-950 border-amber-400",
+  "인스타그램": "bg-amber-400 text-gray-950 border-amber-400",
+  "유튜브": "bg-amber-400 text-gray-950 border-amber-400",
+  "틱톡": "bg-amber-400 text-gray-950 border-amber-400",
+  "멀티 채널": "bg-amber-400 text-gray-950 border-amber-400",
 };
 
 function XIcon() {
@@ -365,7 +365,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
   const effectiveTab = urgentContests.length > 0 ? quickTab : "recent";
 
   return (
-    <section id="contests" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+    <section id="contests" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
 
       {/* Quick Access — 마감임박 + 최근확인 통합 블록 */}
       {showQuickAccess && (urgentContests.length > 0 || recentlyViewed.length > 0) && (
@@ -410,7 +410,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
               </span>
-              <h3 className="text-sm font-extrabold text-red-600 dark:text-red-400 uppercase tracking-widest">마감임박</h3>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-red-600 dark:text-red-400">마감임박</h3>
               <span className="text-xs text-red-400 dark:text-red-500 font-medium">— D-3 이내 마감</span>
             </div>
           ) : (
@@ -432,7 +432,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
                     <button
                       key={contest.id}
                       onClick={() => handleSelect(contest)}
-                      className={`flex-shrink-0 flex items-center gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-2xl px-4 py-3 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all cursor-pointer text-left group ${
+                      className={`flex-shrink-0 flex items-center gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-md px-3 py-2.5 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all cursor-pointer text-left group ${
                         visitedIds.includes(contest.id) ? "opacity-50 hover:opacity-80" : ""
                       }`}
                     >
@@ -445,7 +445,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
                           {daysLeft === 1 ? (
                             <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-amber-500 text-white">내일까지!</span>
                           ) : (
-                            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-orange-500/90 text-white">D-{daysLeft} 마감</span>
+                            <span className="rounded bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">D-{daysLeft} 마감</span>
                           )}
                         </div>
                       </div>
@@ -480,7 +480,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
                           ) : daysLeft === 1 ? (
                             <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-amber-500 text-white">내일까지!</span>
                           ) : daysLeft <= 3 ? (
-                            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-orange-500/90 text-white">D-{daysLeft} 마감</span>
+                            <span className="rounded bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">D-{daysLeft} 마감</span>
                           ) : daysLeft <= 7 ? (
                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">D-{daysLeft}</span>
                           ) : (
@@ -504,7 +504,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
           <div className="flex items-center gap-3 flex-wrap">
             <h2
               key={h2Text}
-              className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight animate-fade-in"
+              className="text-xl font-black tracking-tight text-gray-900 animate-fade-in dark:text-white sm:text-2xl"
             >
               {h2Text}
             </h2>
@@ -560,7 +560,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
               onClick={() => setShowExpired((v) => !v)}
               className={`inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all border-none cursor-pointer whitespace-nowrap ${
                 showExpired
-                  ? "bg-amber-500 text-white shadow-lg shadow-amber-500/25"
+                  ? "bg-amber-400 text-gray-950 border-amber-400"
                   : "bg-white dark:bg-gray-900 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-sm"
               }`}
             >
@@ -576,7 +576,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
             onClick={() => setShowBookmarkedOnly((v) => !v)}
             className={`inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all border-none cursor-pointer whitespace-nowrap ${
               showBookmarkedOnly
-                ? "bg-amber-500 text-white shadow-lg shadow-amber-500/25"
+                ? "bg-amber-400 text-gray-950 border-amber-400"
                 : "bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-sm"
             }`}
           >
@@ -593,7 +593,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
                 onClick={() => setShowUnvisitedOnly((v) => !v)}
                 className={`inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all border-none cursor-pointer whitespace-nowrap ${
                   showUnvisitedOnly
-                    ? "bg-amber-500 text-white shadow-lg shadow-amber-500/25"
+                    ? "bg-amber-400 text-gray-950 border-amber-400"
                     : "bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-sm"
                 }`}
               >
@@ -628,7 +628,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
               title={`${label}원 이상 공모전`}
               className={`inline-flex items-center gap-1 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all border-none cursor-pointer whitespace-nowrap ${
                 minPrize === value
-                  ? "bg-amber-500 text-white shadow-lg shadow-amber-500/25"
+                  ? "bg-amber-400 text-gray-950 border-amber-400"
                   : "bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-sm"
               }`}
             >
@@ -655,7 +655,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
               title={label}
               className={`inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all border-none cursor-pointer whitespace-nowrap ${
                 sortBy === value
-                  ? "bg-amber-500 text-white shadow-lg shadow-amber-500/25"
+                  ? "bg-amber-400 text-gray-950 border-amber-400"
                   : "bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-sm"
               }`}
             >
@@ -691,7 +691,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
           onFocus={() => { setSearchFocused(true); setShowSuggestions(true); }}
           onBlur={() => { setSearchFocused(false); saveRecentSearch(searchQuery); }}
           onKeyDown={handleSearchKeyDown}
-          placeholder={activeCategory !== "전체" ? `${activeCategory} 공모전 검색…` : "공모전 이름, 기업명 검색…"}
+          placeholder={activeCategory !== "전체" ? `${activeCategory} 공모전 검색…` : "공모전 이름, 주최자명 검색…"}
           aria-autocomplete="list"
           aria-expanded={showSuggestions && suggestions.length > 0}
           className="w-full pl-10 pr-24 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent shadow-sm transition-shadow"
@@ -839,7 +839,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
                 }}
                 className={`flex-shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border-none cursor-pointer ${
                   activeCategory === cat
-                    ? categoryActiveStyle[cat] || "bg-amber-500 text-white shadow-lg shadow-amber-500/25"
+                    ? categoryActiveStyle[cat] || "bg-amber-400 text-gray-950 border-amber-400"
                     : count === 0
                     ? "bg-white dark:bg-gray-900 text-gray-300 dark:text-gray-700 border border-gray-100 dark:border-gray-800 shadow-sm opacity-50"
                     : "bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 border border-gray-100 dark:border-gray-800 shadow-sm"
@@ -906,8 +906,8 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
 
       {/* Grid */}
       {filtered.length === 0 ? (
-        <div className="text-center py-20 animate-fade-in">
-          <div className="text-6xl mb-4 animate-float" style={{ animationDelay: "0.1s" }}>
+        <div className="py-14 text-center animate-fade-in">
+          <div className="mb-3 text-4xl" style={{ animationDelay: "0.1s" }}>
             {showUnvisitedOnly && !showBookmarkedOnly ? "🎉"
               : showUnvisitedOnly && showBookmarkedOnly ? "🎊"
               : showBookmarkedOnly ? "🔖"
@@ -960,7 +960,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
             {showBookmarkedOnly && (
               <button
                 onClick={() => setShowBookmarkedOnly(false)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-400 to-yellow-400 text-gray-950 font-extrabold rounded-xl shadow-md shadow-amber-500/20 hover:from-amber-300 hover:to-yellow-300 hover:-translate-y-0.5 transition-all text-sm cursor-pointer border-none"
+                className="inline-flex items-center gap-2 rounded-md border-none bg-amber-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-amber-300 cursor-pointer"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -971,7 +971,7 @@ export default function ContestList({ contests, onSelect, bookmarks, onToggleBoo
             {showUnvisitedOnly && (
               <button
                 onClick={() => setShowUnvisitedOnly(false)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-400 to-yellow-400 text-gray-950 font-extrabold rounded-xl shadow-md shadow-amber-500/20 hover:from-amber-300 hover:to-yellow-300 hover:-translate-y-0.5 transition-all text-sm cursor-pointer border-none"
+                className="inline-flex items-center gap-2 rounded-md border-none bg-amber-400 px-4 py-2 text-sm font-bold text-gray-950 transition hover:bg-amber-300 cursor-pointer"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />

@@ -25,3 +25,8 @@ dist-ssr
 .gstack/
 
 .vercel
+.vercel-jins-backup/
+*.stackdump
+390x844-*.png
+.adsduck-api-test*.log
+.vite-dev*.log

@@ -1,6 +1,12 @@
 import { appConfig } from "../config/appConfig";
+import {
+  calculateOrganizerPayment,
+  findOrganizerPaymentCode,
+  normalizePaymentCode,
+} from "../data/organizerPaymentCodes";
 
 const MOCK_ENTRIES_KEY = "adsduck-mock-contest-entries";
+const USE_LOCAL_MOCKS = !appConfig.apiBaseUrl && !import.meta.env.PROD;
 
 function getStoredMockEntries() {
   try {
@@ -91,11 +97,7 @@ function getMockLeaderboard(contestId) {
 }
 
 async function fetchJson(path, options = {}) {
-  if (!appConfig.apiBaseUrl) {
-    throw new Error("API base URL is not configured.");
-  }
-
-  const response = await fetch(`${appConfig.apiBaseUrl}${path}`, {
+  const response = await fetch(`${appConfig.apiBaseUrl || ""}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -111,6 +113,10 @@ async function fetchJson(path, options = {}) {
   }
 
   return data;
+}
+
+async function fetchBoardJson(path, options = {}) {
+  return fetchJson(path, options);
 }
 
 function authHeaders(authSession) {
@@ -201,4 +207,182 @@ export async function createPaymentCheckout(productId, authSession) {
     headers: authHeaders(authSession),
     body: JSON.stringify({ productId }),
   });
+}
+
+export async function createPointChargeCheckout(amount, authSession) {
+  const chargeAmount = Math.floor(Number(amount || 0));
+  return fetchJson("/api/payments/checkout", {
+    method: "POST",
+    headers: authHeaders(authSession),
+    body: JSON.stringify({
+      kind: "point-charge",
+      amount: chargeAmount,
+      productId: `adsduck-point-charge-${chargeAmount}`,
+    }),
+  });
+}
+
+export async function verifyOrganizerBusiness(payload, authSession) {
+  const businessNumber = String(payload?.businessNumber || "").replace(/\D/g, "");
+  const startDate = String(payload?.startDate || "").replace(/\D/g, "");
+  const representativeName = String(payload?.representativeName || "").trim();
+
+  if (USE_LOCAL_MOCKS) {
+    const ok = businessNumber.length === 10 && startDate.length === 8 && representativeName.length > 1;
+    return {
+      ok,
+      mode: "mock",
+      verification: {
+        type: "business",
+        label: ok ? `사업자 ${businessNumber.slice(0, 3)}-${businessNumber.slice(3, 5)}-${businessNumber.slice(5)}` : "",
+      },
+      message: ok
+        ? "사업자 확인이 완료되었습니다."
+        : "사업자등록번호, 개업일자, 대표자명을 확인해주세요.",
+    };
+  }
+
+  return fetchJson("/api/organizer/verification/business", {
+    method: "POST",
+    headers: authHeaders(authSession),
+    body: JSON.stringify({
+      ...payload,
+      businessNumber,
+      startDate,
+      representativeName,
+    }),
+  });
+}
+
+export async function startOrganizerPassVerification(authSession) {
+  if (USE_LOCAL_MOCKS) {
+    return {
+      ok: true,
+      mode: "mock",
+      verification: {
+        type: "pass",
+        label: "PASS 본인인증 완료",
+      },
+      message: "PASS 본인인증이 완료되었습니다.",
+    };
+  }
+
+  return fetchJson("/api/organizer/verification/pass/start", {
+    method: "POST",
+    headers: authHeaders(authSession),
+    body: JSON.stringify({ returnUrl: window.location.href }),
+  });
+}
+
+export async function verifyOrganizerPaymentCode(code, authSession) {
+  const normalizedCode = normalizePaymentCode(code);
+
+  if (USE_LOCAL_MOCKS) {
+    const paymentCode = findOrganizerPaymentCode(normalizedCode);
+    if (!paymentCode) {
+      throw new Error("유효하지 않은 결제 코드입니다.");
+    }
+    return {
+      ok: true,
+      mode: "mock",
+      paymentCode,
+    };
+  }
+
+  return fetchJson("/api/organizer/payment-codes/verify", {
+    method: "POST",
+    headers: authHeaders(authSession),
+    body: JSON.stringify({ code: normalizedCode }),
+  });
+}
+
+export async function createOrganizerPaymentCheckout(code, authSession) {
+  const normalizedCode = normalizePaymentCode(code);
+
+  if (USE_LOCAL_MOCKS) {
+    const paymentCode = findOrganizerPaymentCode(normalizedCode);
+    if (!paymentCode) {
+      throw new Error("유효하지 않은 결제 코드입니다.");
+    }
+    return {
+      ok: true,
+      mode: "mock",
+      paymentCode: {
+        ...paymentCode,
+        ...calculateOrganizerPayment(paymentCode.totalAmount),
+      },
+    };
+  }
+
+  return fetchJson("/api/organizer/payment-codes/checkout", {
+    method: "POST",
+    headers: authHeaders(authSession),
+    body: JSON.stringify({ code: normalizedCode }),
+  });
+}
+
+export async function getBoardPosts(board = "") {
+  const query = board ? `?board=${encodeURIComponent(board)}` : "";
+  return fetchBoardJson(`/api/board/posts${query}`);
+}
+
+export async function createBoardPost(payload, authSession) {
+  return fetchBoardJson("/api/board/posts", {
+    method: "POST",
+    headers: authHeaders(authSession),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateBoardPost(postId, payload, authSession) {
+  return fetchBoardJson(`/api/board/posts/${encodeURIComponent(postId)}`, {
+    method: "PUT",
+    headers: authHeaders(authSession),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function uploadBoardMediaFile(file, authSession) {
+  const sign = await fetchBoardJson("/api/board/media/sign-upload", {
+    method: "POST",
+    headers: authHeaders(authSession),
+    body: JSON.stringify({
+      name: file.name,
+      mime: file.type,
+      size: file.size,
+    }),
+  });
+
+  const formData = new FormData();
+  formData.append("cacheControl", "31536000");
+  formData.append("", file);
+
+  const uploadResponse = await fetch(sign.signedUrl, {
+    method: "PUT",
+    headers: { "x-upsert": "false" },
+    body: formData,
+  });
+
+  if (!uploadResponse.ok) {
+    let message = "Media upload failed.";
+    try {
+      const data = await uploadResponse.json();
+      message = data?.error || data?.message || message;
+    } catch {
+      // Keep the default message.
+    }
+    throw new Error(message);
+  }
+
+  return {
+    id: `media-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    kind: "upload",
+    mediaType: sign.mediaType,
+    mime: sign.mime,
+    name: file.name,
+    size: file.size,
+    path: sign.path,
+    bucket: sign.bucket,
+    url: sign.publicUrl,
+  };
 }

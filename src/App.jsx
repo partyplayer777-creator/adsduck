@@ -4,6 +4,9 @@ import Hero from "./components/Hero";
 import ContestList from "./components/ContestList";
 import ContestDetail from "./components/ContestDetail";
 import Board from "./components/Board";
+import Messages from "./components/Messages";
+import PointCharge from "./components/PointCharge";
+import OrganizerHost from "./components/OrganizerHost";
 import Terms from "./components/Terms";
 import Footer from "./components/Footer";
 import { ToastContainer } from "./components/Toast";
@@ -28,6 +31,36 @@ function getInitialRoute() {
       termsSection: DEFAULT_TERMS_KEY,
       title: "게시판 — AdsDuck",
       historyState: { page: "board" },
+    };
+  }
+
+  if (params.get("organizer") === "1") {
+    return {
+      page: "organizer",
+      contest: null,
+      termsSection: DEFAULT_TERMS_KEY,
+      title: "공모전 주최하기 — AdsDuck",
+      historyState: { page: "organizer" },
+    };
+  }
+
+  if (params.get("messages") === "1") {
+    return {
+      page: "messages",
+      contest: null,
+      termsSection: DEFAULT_TERMS_KEY,
+      title: "쪽지함 — AdsDuck",
+      historyState: { page: "messages" },
+    };
+  }
+
+  if (params.get("points") === "1") {
+    return {
+      page: "points",
+      contest: null,
+      termsSection: DEFAULT_TERMS_KEY,
+      title: "포인트 충전 — AdsDuck",
+      historyState: { page: "points" },
     };
   }
 
@@ -135,6 +168,15 @@ export default function App() {
       } else if (state.page === "board") {
         setPage("board");
         setSelectedContest(null);
+      } else if (state.page === "organizer") {
+        setPage("organizer");
+        setSelectedContest(null);
+      } else if (state.page === "messages") {
+        setPage("messages");
+        setSelectedContest(null);
+      } else if (state.page === "points") {
+        setPage("points");
+        setSelectedContest(null);
       }
     };
     window.addEventListener("popstate", handlePopState);
@@ -162,6 +204,11 @@ export default function App() {
   };
 
   const handleNavigate = (target, options = {}) => {
+    if ((target === "messages" || target === "points") && !authSession.isAuthenticated) {
+      setAuthDialogMode("login");
+      return;
+    }
+
     // target이 "terms"일 때는 options.section으로 탭 지정 가능
     const nextTermsSection =
       target === "terms"
@@ -178,6 +225,12 @@ export default function App() {
         nextUrl = `${window.location.pathname}?terms=${nextTermsSection}`;
       } else if (target === "board") {
         nextUrl = `${window.location.pathname}?board=1`;
+      } else if (target === "organizer") {
+        nextUrl = `${window.location.pathname}?organizer=1`;
+      } else if (target === "messages") {
+        nextUrl = `${window.location.pathname}?messages=1`;
+      } else if (target === "points") {
+        nextUrl = `${window.location.pathname}?points=1`;
       } else {
         nextUrl = window.location.href;
       }
@@ -211,6 +264,12 @@ export default function App() {
         document.title = "이용약관 — AdsDuck";
       } else if (target === "board") {
         document.title = "게시판 — AdsDuck";
+      } else if (target === "organizer") {
+        document.title = "공모전 주최하기 — AdsDuck";
+      } else if (target === "messages") {
+        document.title = "쪽지함 — AdsDuck";
+      } else if (target === "points") {
+        document.title = "포인트 충전 — AdsDuck";
       }
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -251,7 +310,12 @@ export default function App() {
       <main className="flex-1">
         {page === "home" && (
           <>
-            <Hero contests={contests} onScrollToContests={handleScrollToContests} />
+            <Hero
+              contests={contests}
+              onScrollToContests={handleScrollToContests}
+              onNavigateOrganizer={() => handleNavigate("organizer")}
+              darkMode={darkMode}
+            />
             <ContestList
               contests={contests}
               onSelect={handleSelect}
@@ -281,6 +345,28 @@ export default function App() {
             pointAccount={pointAccount}
             onRequireLogin={setAuthDialogMode}
             onToast={addToast}
+            onOpenPoints={() => handleNavigate("points")}
+          />
+        )}
+        {page === "messages" && (
+          <Messages
+            authSession={authSession.session}
+            onRequireLogin={setAuthDialogMode}
+          />
+        )}
+        {page === "points" && (
+          <PointCharge
+            authSession={authSession.session}
+            pointAccount={pointAccount}
+            onRequireLogin={setAuthDialogMode}
+            onToast={addToast}
+          />
+        )}
+        {page === "organizer" && (
+          <OrganizerHost
+            authSession={authSession.session}
+            onToast={addToast}
+            onBack={() => handleNavigate("home")}
           />
         )}
         {page === "terms" && (

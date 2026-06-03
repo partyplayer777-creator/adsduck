@@ -1,4 +1,5 @@
 import logoSrc from "../assets/adsduck-logo.png";
+import logoWhiteSrc from "../assets/adsduck-logo-white.png";
 
 export default function Footer({ onNavigate, onScrollToContests, darkMode }) {
   const handleContestList = () => {
@@ -16,14 +17,13 @@ export default function Footer({ onNavigate, onScrollToContests, darkMode }) {
               className="flex items-center mb-4 bg-transparent border-none cursor-pointer p-0 hover:opacity-80 transition-opacity"
             >
               <img
-                src={logoSrc}
+                src={darkMode ? logoWhiteSrc : logoSrc}
                 alt="AdsDuck"
                 className="h-8 w-auto"
-                style={{ filter: darkMode ? "brightness(0) invert(1)" : "none" }}
               />
             </button>
             <p className="text-sm text-gray-400 dark:text-gray-500 leading-relaxed max-w-xs">
-              기업과 크리에이터를 연결하는 공모전 홍보 플랫폼. 홍보하고 수익을 만드세요.
+              공모전 주최자와 크리에이터를 연결하는 홍보 공모전 플랫폼. 홍보하고 수익을 만드세요.
             </p>
           </div>
 
@@ -43,10 +43,26 @@ export default function Footer({ onNavigate, onScrollToContests, darkMode }) {
               </li>
               <li>
                 <button
+                  onClick={() => onNavigate?.("organizer")}
+                  className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors bg-transparent border-none cursor-pointer p-0 text-sm text-gray-400 dark:text-gray-500 font-normal"
+                >
+                  공모전 주최하기
+                </button>
+              </li>
+              <li>
+                <button
                   onClick={() => onNavigate?.("board")}
                   className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors bg-transparent border-none cursor-pointer p-0 text-sm text-gray-400 dark:text-gray-500 font-normal"
                 >
                   게시판
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => onNavigate?.("messages")}
+                  className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors bg-transparent border-none cursor-pointer p-0 text-sm text-gray-400 dark:text-gray-500 font-normal"
+                >
+                  쪽지함
                 </button>
               </li>
               <li className="flex items-center gap-2">

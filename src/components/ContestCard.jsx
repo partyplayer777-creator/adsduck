@@ -28,16 +28,6 @@ function formatCount(n) {
   return String(n);
 }
 
-// 카테고리별 accent bar 그라디언트
-const categoryBarGradient = {
-  "SNS 마케팅":  "from-blue-500 to-sky-400",
-  "리뷰 콘텐츠": "from-cyan-500 to-teal-400",
-  "인스타그램":  "from-pink-500 to-rose-400",
-  "유튜브":     "from-red-600 to-red-500",
-  "틱톡":      "from-violet-600 to-purple-500",
-  "멀티 채널":  "from-amber-500 to-yellow-400",
-};
-
 // D-day에 따른 단계별 색상 + 무게
 function getDdayStyle(daysLeft, isExpired) {
   if (isExpired) return "text-gray-400 dark:text-gray-600 font-bold";
@@ -49,10 +39,10 @@ function getDdayStyle(daysLeft, isExpired) {
 
 function getDdayBarColor(daysLeft, isExpired) {
   if (isExpired) return "bg-gray-300 dark:bg-gray-700";
-  if (daysLeft <= 1) return "bg-gradient-to-r from-red-600 to-red-500";
-  if (daysLeft <= 3) return "bg-gradient-to-r from-red-500 to-red-400";
-  if (daysLeft <= 7) return "bg-gradient-to-r from-orange-400 to-red-400";
-  return "bg-gradient-to-r from-amber-400 to-amber-500";
+  if (daysLeft <= 1) return "bg-red-500";
+  if (daysLeft <= 3) return "bg-red-400";
+  if (daysLeft <= 7) return "bg-orange-400";
+  return "bg-amber-400";
 }
 
 export default function ContestCard({ contest, onClick, index = 0, isBookmarked, onToggleBookmark, onToast, searchQuery = "", onCategoryClick, isNew = false, isVisited = false }) {
@@ -73,15 +63,6 @@ export default function ContestCard({ contest, onClick, index = 0, isBookmarked,
   const progress = isExpired
     ? 100
     : Math.max(3, Math.min(97, 100 - (daysLeft / REFERENCE_DAYS) * 100));
-
-  const categoryColors = {
-    "SNS 마케팅": "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
-    "리뷰 콘텐츠": "bg-cyan-50 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400",
-    "인스타그램": "bg-pink-50 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400",
-    "유튜브": "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400",
-    "틱톡": "bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400",
-    "멀티 채널": "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400",
-  };
 
   const handleBookmark = (e) => {
     e.stopPropagation();
@@ -124,41 +105,41 @@ export default function ContestCard({ contest, onClick, index = 0, isBookmarked,
       onClick={() => onClick(contest)}
       onKeyDown={handleCardKeyDown}
       aria-label={`${contest.title} 공모전 상세 보기`}
-      className={`group text-left bg-white dark:bg-gray-900 rounded-2xl border overflow-hidden w-full animate-fade-in-up cursor-pointer card-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 transition-[colors,opacity] duration-200 ${
+      className={`group text-left bg-white dark:bg-gray-900 rounded-lg border overflow-hidden w-full animate-fade-in-up cursor-pointer card-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 transition-[colors,opacity] duration-200 ${
         isVisited && !isExpired ? "opacity-[0.72] hover:opacity-100" : ""
       } ${
         isExpired
           ? "border-gray-100 dark:border-gray-800 opacity-60"
           : !isExpired && daysLeft <= 1
-          ? "border-red-300 dark:border-red-700/60 shadow-lg shadow-red-500/10 group-hover:border-red-400 dark:group-hover:border-red-600"
+          ? "border-red-200 dark:border-red-800/60 group-hover:border-red-300 dark:group-hover:border-red-700"
           : "border-gray-100 dark:border-gray-800 group-hover:border-amber-200 dark:group-hover:border-amber-800/50"
       }`}
       style={{ animationDelay: `${index * 0.08}s` }}
     >
       {/* Top accent bar — 카테고리별 고유 색상, 마감 시 희미하게 유지 */}
-      <div className={`h-1 bg-gradient-to-r ${categoryBarGradient[contest.category] || "from-amber-500 to-yellow-400"} transition-opacity duration-300 ${
+      <div className={`h-0.5 bg-amber-400 transition-opacity duration-300 ${
         isExpired ? "opacity-20" : isVisited ? "opacity-30 group-hover:opacity-100" : "opacity-60 group-hover:opacity-100"
       }`} />
 
-      <div className="p-5 sm:p-6">
+      <div className="p-4 sm:p-5">
         {/* Header row */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
+        <div className="mb-3 flex items-start justify-between">
+          <div className="flex items-center gap-2.5">
             <div className="relative">
               {logoError ? (
-                <div className={`w-11 h-11 rounded-xl shadow-sm flex items-center justify-center text-white font-black text-base select-none ${isExpired ? "bg-gray-400 dark:bg-gray-600" : "bg-amber-500"}`}>
+                <div className={`flex h-9 w-9 items-center justify-center rounded-md text-sm font-bold text-white select-none ${isExpired ? "bg-gray-400 dark:bg-gray-600" : "bg-amber-500"}`}>
                   {contest.company.charAt(0)}
                 </div>
               ) : (
-                <div className="relative w-11 h-11">
+                <div className="relative h-9 w-9">
                   {!logoLoaded && (
-                    <div className="absolute inset-0 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
+                    <div className="absolute inset-0 rounded-md bg-gray-100 dark:bg-gray-800 animate-pulse" />
                   )}
                   <img
                     src={contest.logo}
                     alt={contest.company}
                     loading="lazy"
-                    className={`w-11 h-11 rounded-xl shadow-sm transition-opacity duration-200 ${isExpired ? "grayscale" : ""} ${logoLoaded ? "opacity-100" : "opacity-0"}`}
+                    className={`h-9 w-9 rounded-md transition-opacity duration-200 ${isExpired ? "grayscale" : ""} ${logoLoaded ? "opacity-100" : "opacity-0"}`}
                     onLoad={() => setLogoLoaded(true)}
                     onError={() => setLogoError(true)}
                   />
@@ -171,11 +152,11 @@ export default function ContestCard({ contest, onClick, index = 0, isBookmarked,
               )}
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
                 <Highlight text={contest.company} query={searchQuery} />
               </p>
               <span
-                className={`inline-block text-[11px] font-bold px-2 py-0.5 rounded-md mt-0.5 ${
+                className={`mt-0.5 inline-block rounded px-1.5 py-0.5 text-[10px] font-bold ${
                   isExpired
                     ? "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500"
                     : isUrgent
@@ -201,7 +182,7 @@ export default function ContestCard({ contest, onClick, index = 0, isBookmarked,
             <button
               onClick={(e) => { e.stopPropagation(); onCategoryClick?.(contest.category); }}
               title={`"${contest.category}" 카테고리만 보기`}
-              className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition-all hover:scale-105 hover:shadow-sm active:scale-95 bg-transparent border-none cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-amber-400 ${categoryColors[contest.category] || "bg-gray-100 text-gray-600"}`}
+                className="rounded-md border-none bg-gray-100 px-2 py-0.5 text-[11px] font-bold text-gray-600 transition hover:bg-amber-50 hover:text-amber-700 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-amber-400 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-amber-900/20 dark:hover:text-amber-300"
             >
               {contest.category}
             </button>
@@ -210,7 +191,7 @@ export default function ContestCard({ contest, onClick, index = 0, isBookmarked,
 
         {/* Title */}
         <h3
-          className={`text-[17px] font-bold mb-2 transition-colors leading-snug line-clamp-2 [word-break:keep-all] ${
+          className={`mb-1.5 text-base font-bold leading-snug line-clamp-2 transition-colors [word-break:keep-all] ${
             isExpired
               ? "text-gray-400 dark:text-gray-600"
               : "text-gray-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400"
@@ -222,15 +203,15 @@ export default function ContestCard({ contest, onClick, index = 0, isBookmarked,
 
         {/* Description */}
         <p
-          className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 sm:line-clamp-3 mb-5 leading-relaxed"
+          className="mb-4 text-sm leading-6 text-gray-500 line-clamp-2 dark:text-gray-400"
           title={contest.description}
         >
           {contest.description}
         </p>
 
         {/* Deadline progress */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-1.5">
+        <div className="mb-3">
+          <div className="mb-1.5 flex items-center justify-between">
             <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
               {isExpired ? "마감" : "마감까지"}
             </span>
@@ -289,7 +270,7 @@ export default function ContestCard({ contest, onClick, index = 0, isBookmarked,
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-50 dark:border-gray-800">
+        <div className="flex items-center justify-between border-t border-gray-100 pt-3 dark:border-gray-800">
           <div className="flex items-center gap-1.5">
             {isVisited && (
               <span className="text-[10px] text-gray-300 dark:text-gray-600 font-semibold">✓ 확인함</span>
@@ -306,7 +287,7 @@ export default function ContestCard({ contest, onClick, index = 0, isBookmarked,
             {/* Prize */}
             <div className="flex items-center gap-1">
               <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">최대</span>
-              <span className={`text-base font-extrabold transition-colors duration-200 ${
+              <span className={`text-sm font-bold transition-colors duration-200 ${
                 isExpired
                   ? "text-gray-400 dark:text-gray-600"
                   : "text-amber-500 dark:text-amber-400 group-hover:text-amber-600 dark:group-hover:text-amber-300"
@@ -318,7 +299,7 @@ export default function ContestCard({ contest, onClick, index = 0, isBookmarked,
             {/* Share button */}
             <button
               onClick={handleShare}
-              className={`p-2.5 rounded-lg transition-all bg-transparent border-none cursor-pointer ${
+              className={`rounded-md border-none bg-transparent p-2 transition-all cursor-pointer ${
                 isCopied
                   ? "text-emerald-500 dark:text-emerald-400"
                   : "text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
@@ -339,7 +320,7 @@ export default function ContestCard({ contest, onClick, index = 0, isBookmarked,
             {/* Bookmark button */}
             <button
               onClick={handleBookmark}
-              className={`p-2.5 rounded-lg transition-all bg-transparent border-none cursor-pointer ${
+              className={`rounded-md border-none bg-transparent p-2 transition-all cursor-pointer ${
                 isBookmarked
                   ? "text-amber-500 hover:text-amber-600"
                   : "text-gray-300 dark:text-gray-600 hover:text-amber-400 hover:bg-gray-50 dark:hover:bg-gray-800"

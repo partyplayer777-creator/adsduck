@@ -42,6 +42,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: #f8fafc;
+  color: #111827;
 }
 
 .dark body {
@@ -188,7 +189,7 @@ html.no-transition * {
 
 /* Gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, #6366f1, #d946ef, #f59e0b);
+  background: linear-gradient(135deg, #111827, #f59e0b);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -216,15 +217,15 @@ html.no-transition * {
 
 /* Card hover lift */
 .card-hover {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
 .card-hover:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 40px -12px rgba(245, 158, 11, 0.18);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px -16px rgba(17, 24, 39, 0.22);
 }
 
 .dark .card-hover:hover {
-  box-shadow: 0 20px 40px -12px rgba(245, 158, 11, 0.22);
+  box-shadow: 0 8px 20px -16px rgba(0, 0, 0, 0.5);
 }
 
 /* Hide scrollbar for category tabs */
@@ -255,7 +256,7 @@ html.no-transition * {
 
 /* Progress bar */
 .progress-bar {
-  background: linear-gradient(90deg, #6366f1, #d946ef);
+  background: #f59e0b;
   border-radius: 999px;
   transition: width 1s ease-out;
 }
