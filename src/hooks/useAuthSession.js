@@ -105,7 +105,7 @@ export function useAuthSession() {
 
     if (mode === "signup" && !options.marketingConsent) {
       setAuthError("필수 동의 항목을 체크해야 회원가입할 수 있습니다.");
-      return;
+      return false;
     }
 
     if (!appConfig.authBaseUrl) {
@@ -125,7 +125,7 @@ export function useAuthSession() {
         marketingConsent: !!options.marketingConsent,
         mode: "mock",
       });
-      return;
+      return true;
     }
 
     window.open(
@@ -133,6 +133,7 @@ export function useAuthSession() {
       "adsduck-auth",
       "popup,width=460,height=720"
     );
+    return true;
   }, [persistSession]);
 
   const logout = useCallback(() => {

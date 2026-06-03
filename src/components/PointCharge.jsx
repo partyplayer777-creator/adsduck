@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { createPointChargeCheckout } from "../api/adsduckApi";
 
 const PRESET_AMOUNTS = [1000, 5000, 10000, 30000, 50000];
 
@@ -9,17 +8,6 @@ function formatKrw(value) {
 
 function formatPoint(value) {
   return `${Number(value || 0).toLocaleString()}P`;
-}
-
-function getCheckoutUrl(checkout) {
-  return (
-    checkout?.checkoutUrl ||
-    checkout?.paymentUrl ||
-    checkout?.url ||
-    checkout?.session?.url ||
-    checkout?.data?.checkoutUrl ||
-    ""
-  );
 }
 
 function WalletIcon({ className = "h-4 w-4" }) {
@@ -47,24 +35,13 @@ export default function PointCharge({ authSession, pointAccount, onRequireLogin,
       return;
     }
     if (!validAmount) {
-      onToast?.("충전 금액은 1,000원 이상 입력해주세요.");
+      onToast?.("충전 금액은 1,000원 이상 입력해주세요.", "error");
       return;
     }
 
     setLoading(true);
-    try {
-      const checkout = await createPointChargeCheckout(normalizedAmount, authSession);
-      const checkoutUrl = getCheckoutUrl(checkout);
-      if (checkoutUrl) {
-        window.location.assign(checkoutUrl);
-        return;
-      }
-      onToast?.("결제 세션이 생성되었습니다.");
-    } catch (error) {
-      onToast?.(error.message);
-    } finally {
-      setLoading(false);
-    }
+    window.alert(`결제 모듈은 연동 후 적용 예정입니다.\n\n선택 금액: ${formatKrw(normalizedAmount)}\n충전 예정 포인트: ${formatPoint(normalizedAmount)}`);
+    setLoading(false);
   };
 
   return (

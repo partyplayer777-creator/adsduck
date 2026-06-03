@@ -4,6 +4,7 @@ export const CREATOR_PAYOUT_INCOME_TAX_RATE = 0.03;
 export const CREATOR_PAYOUT_LOCAL_INCOME_TAX_RATE = 0.003;
 export const CREATOR_PAYOUT_WITHHOLDING_TAX_RATE =
   CREATOR_PAYOUT_INCOME_TAX_RATE + CREATOR_PAYOUT_LOCAL_INCOME_TAX_RATE;
+export const ORGANIZER_SERVICE_FEE_RATE = 0.197;
 
 export const ORGANIZER_PAYMENT_CODES = [
   {
@@ -33,7 +34,7 @@ export function normalizePaymentCode(value) {
 
 export function calculateOrganizerPayment(totalAmount) {
   const amount = Math.max(0, Number(totalAmount) || 0);
-  const serviceFeeAmount = Math.floor(amount * 0.2);
+  const serviceFeeAmount = Math.floor(amount * ORGANIZER_SERVICE_FEE_RATE);
   const escrowAmount = amount - serviceFeeAmount;
 
   return {

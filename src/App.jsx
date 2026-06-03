@@ -392,8 +392,10 @@ export default function App() {
         error={authSession.authError}
         onClose={() => setAuthDialogMode(null)}
         onProviderLogin={(provider, mode, options) => {
-          authSession.loginWithProvider(provider, mode, options);
-          setAuthDialogMode(null);
+          const started = authSession.loginWithProvider(provider, mode, options);
+          if (started !== false) {
+            setAuthDialogMode(null);
+          }
         }}
       />
       <ScrollToTop />

@@ -1,12 +1,7 @@
 import { useState } from "react";
 import {
-  createOrganizerPaymentCheckout,
-  startOrganizerPassVerification,
-  verifyOrganizerBusiness,
-  verifyOrganizerPaymentCode,
-} from "../api/adsduckApi";
-import {
   ORGANIZER_CONTACT_URL,
+  findOrganizerPaymentCode,
   formatKrw,
   normalizePaymentCode,
 } from "../data/organizerPaymentCodes";
@@ -58,8 +53,8 @@ function PaymentBreakdown({ paymentCode }) {
   return (
     <div className="border-y border-gray-100 px-1 py-1 dark:border-gray-800">
       <MoneyRow label="결제 금액" value={paymentCode.totalAmount} accent />
-      <MoneyRow label="플랫폼 이용료 20%" value={paymentCode.serviceFeeAmount} />
-      <MoneyRow label="상금 및 참여 보상 재원 80%" value={paymentCode.escrowAmount} />
+      <MoneyRow label="플랫폼 이용료 19.7%" value={paymentCode.serviceFeeAmount} />
+      <MoneyRow label="상금 및 참여 보상 재원 80.3%" value={paymentCode.escrowAmount} />
     </div>
   );
 }
@@ -127,7 +122,7 @@ function PaymentModal({ open, paymentCode, loading, onClose, onPay }) {
   );
 }
 
-export default function OrganizerHost({ authSession, onToast, onBack }) {
+export default function OrganizerHost({ onToast, onBack }) {
   const [verificationMethod, setVerificationMethod] = useState("business");
   const [businessForm, setBusinessForm] = useState(emptyBusinessForm);
   const [verification, setVerification] = useState({ verified: false, pending: false, label: "" });
@@ -149,17 +144,19 @@ export default function OrganizerHost({ authSession, onToast, onBack }) {
     event.preventDefault();
     setVerificationLoading(true);
     try {
-      const result = await verifyOrganizerBusiness(businessForm, authSession);
-      if (!result.ok) {
-        throw new Error(result.message || "사업자 확인에 실패했습니다.");
+      const businessNumber = String(businessForm.businessNumber || "").replace(/\D/g, "");
+      const startDate = String(businessForm.startDate || "").replace(/\D/g, "");
+      const representativeName = String(businessForm.representativeName || "").trim();
+      if (businessNumber.length !== 10 || startDate.length !== 8 || representativeName.length < 2) {
+        throw new Error("사업자등록번호, 개업일자, 대표자명을 확인해주세요.");
       }
       setVerification({
         verified: true,
         pending: false,
         type: "business",
-        label: result.verification?.label || "사업자 확인 완료",
+        label: `사업자 ${businessNumber.slice(0, 3)}-${businessNumber.slice(3, 5)}-${businessNumber.slice(5)} 확인 완료`,
       });
-      onToast?.(result.message || "사업자 확인이 완료되었습니다.");
+      onToast?.("사업자 확인이 완료되었습니다.");
     } catch (error) {
       setVerification({ verified: false, pending: false, label: "" });
       onToast?.(error.message);
@@ -171,23 +168,13 @@ export default function OrganizerHost({ authSession, onToast, onBack }) {
   const handlePassVerify = async () => {
     setVerificationLoading(true);
     try {
-      const result = await startOrganizerPassVerification(authSession);
-      if (result.redirectUrl) {
-        window.open(result.redirectUrl, "adsduck-pass", "popup,width=430,height=720");
-        setVerification({ verified: false, pending: true, type: "pass", label: "PASS 인증 진행 중" });
-        onToast?.("PASS 인증창을 열었습니다.");
-        return;
-      }
-      if (!result.ok) {
-        throw new Error(result.message || "PASS 본인인증을 시작하지 못했습니다.");
-      }
       setVerification({
         verified: true,
         pending: false,
         type: "pass",
-        label: result.verification?.label || "PASS 본인인증 완료",
+        label: "PASS 본인인증 완료",
       });
-      onToast?.(result.message || "PASS 본인인증이 완료되었습니다.");
+      onToast?.("PASS 본인인증이 완료되었습니다.");
     } catch (error) {
       setVerification({ verified: false, pending: false, label: "" });
       onToast?.(error.message);
@@ -218,8 +205,11 @@ export default function OrganizerHost({ authSession, onToast, onBack }) {
 
     setCodeLoading(true);
     try {
-      const result = await verifyOrganizerPaymentCode(normalizedCode, authSession);
-      setPaymentCode(result.paymentCode);
+      const found = findOrganizerPaymentCode(normalizedCode);
+      if (!found) {
+        throw new Error("유효하지 않은 결제 코드입니다.");
+      }
+      setPaymentCode(found);
       setPaymentModalOpen(true);
       onToast?.("결제 코드가 확인되었습니다.");
     } catch (error) {
@@ -233,31 +223,8 @@ export default function OrganizerHost({ authSession, onToast, onBack }) {
   const handlePay = async () => {
     if (!paymentCode) return;
     setPaymentLoading(true);
-    try {
-      const checkout = await createOrganizerPaymentCheckout(paymentCode.code, authSession);
-      const checkoutUrl =
-        checkout.checkoutUrl ||
-        checkout.paymentUrl ||
-        checkout.url ||
-        checkout.session?.url ||
-        checkout.data?.checkoutUrl;
-
-      if (checkoutUrl) {
-        window.location.assign(checkoutUrl);
-        return;
-      }
-
-      onToast?.(
-        checkout.mode === "mock"
-          ? "로컬 모드에서 결제 세션 생성까지 확인했습니다."
-          : "결제 세션이 생성되었습니다."
-      );
-      setPaymentModalOpen(false);
-    } catch (error) {
-      onToast?.(error.message);
-    } finally {
-      setPaymentLoading(false);
-    }
+    window.alert(`결제 모듈은 연동 후 적용 예정입니다.\n\n결제 코드: ${paymentCode.code}\n결제 예정 금액: ${formatKrw(paymentCode.totalAmount)}`);
+    setPaymentLoading(false);
   };
 
   return (
