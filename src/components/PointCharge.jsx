@@ -85,7 +85,7 @@ export default function PointCharge({ authSession, pointAccount, onRequireLogin,
                   disabled={loading}
                   className="h-11 rounded-md border-none bg-gray-950 px-5 text-sm font-bold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-100"
                 >
-                  {loading ? "결제 준비 중" : "결제 페이지로 이동"}
+                  {loading ? "결제 준비 중" : "결제하기"}
                 </button>
               </div>
             </div>
