@@ -96,7 +96,7 @@ const REWARD_ITEMS = [
   { label: "좋아요", value: `+${POINT_RULES.likeReward}P` },
   { label: "메시지", value: `-${POINT_RULES.messageCost}P` },
   { label: "공모전 참가", value: `-${POINT_RULES.contestEntryCost}P` },
-  { label: "익명 벌점", value: `1시간 ${POINT_RULES.penaltyHourlyLimit}P` },
+  { label: "익명 벌금", value: `1시간 ${POINT_RULES.penaltyHourlyLimit}P` },
   { label: "선행 포인트", value: `${POINT_RULES.virtuePointCost.toLocaleString()}P / 1점` },
 ];
 
@@ -153,6 +153,24 @@ function formatDate(iso) {
   }).format(new Date(iso));
 }
 
+function getEditedAt(item, { trustUpdatedAt = false } = {}) {
+  const explicit = item?.editedAt || item?.edited_at || item?.modifiedAt || item?.modified_at;
+  if (explicit) return explicit;
+  const updatedAt = item?.updatedAt || item?.updated_at;
+  if ((item?.isEdited || trustUpdatedAt) && updatedAt && updatedAt !== item?.createdAt) {
+    return updatedAt;
+  }
+  return "";
+}
+
+function getCommentInputId(postId) {
+  return `board-comment-input-${postId}`;
+}
+
+function getReplyInputId(commentId) {
+  return `board-reply-input-${commentId}`;
+}
+
 function getHourlyPenaltyUsed(userId) {
   if (!userId) return 0;
   const ledger = readPenaltyLedger();
@@ -202,6 +220,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [comments, setComments] = useState({});
   const [replyDrafts, setReplyDrafts] = useState({});
+  const [activeReplyComposerId, setActiveReplyComposerId] = useState("");
   const [penaltyAmounts, setPenaltyAmounts] = useState({});
   const [messageDrafts, setMessageDrafts] = useState({});
   const [boardRemoteReady, setBoardRemoteReady] = useState(false);
@@ -242,6 +261,10 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
   );
 
   useEffect(() => {
+    setActiveReplyComposerId("");
+  }, [activeBoard, selectedPostId]);
+
+  useEffect(() => {
     let active = true;
 
     getBoardPosts()
@@ -268,7 +291,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
   const syncPostToServer = (post) => {
     if (!boardRemoteReady || !post?.id) return;
     updateBoardPost(post.id, post, authSession)
-      .catch(() => onToast?.("게시글 서버 동기화에 실패했습니다. 잠시 후 다시 시도해주세요."));
+      .catch(() => onToast?.("게시글 변경사항을 저장하지 못했습니다. 잠시 후 다시 시도해주세요."));
   };
 
   const persistPosts = (updater, options = {}) => {
@@ -311,6 +334,27 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
     }
     onToast?.(successMessage);
     return true;
+  };
+
+  const focusComposerInput = (inputId) => {
+    if (typeof document === "undefined") return;
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    input.scrollIntoView({ behavior: "smooth", block: "center" });
+    requestAnimationFrame(() => input.focus());
+  };
+
+  const focusCommentComposer = (postId) => {
+    if (!requireActivity()) return;
+    setActiveReplyComposerId("");
+    focusComposerInput(getCommentInputId(postId));
+  };
+
+  const focusReplyComposer = (commentId) => {
+    if (!requireActivity()) return;
+    setOpenActionKey("");
+    setActiveReplyComposerId(commentId);
+    setTimeout(() => focusComposerInput(getReplyInputId(commentId)), 0);
   };
 
   const addPenaltyLedger = (amount) => {
@@ -381,7 +425,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
       savedPost = result?.post || post;
       setBoardRemoteReady(true);
     } catch {
-      onToast?.("게시글 서버 저장에 실패했습니다. 다시 시도해주세요.");
+      onToast?.("게시글을 저장하지 못했습니다. 다시 시도해주세요.");
       return;
     }
 
@@ -531,6 +575,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
         : post
     )), { syncPostId: postId });
     setComments((prev) => ({ ...prev, [postId]: "" }));
+    setActiveReplyComposerId("");
     pointAccount?.addPoints(POINT_RULES.commentReward, "댓글 작성 보상");
     onToast?.(`댓글 보상 ${formatPoint(POINT_RULES.commentReward)} 지급`);
   };
@@ -570,6 +615,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
         : post
     )), { syncPostId: postId });
     setReplyDrafts((prev) => ({ ...prev, [draftKey]: "" }));
+    setActiveReplyComposerId("");
     pointAccount?.addPoints(POINT_RULES.commentReward, "대댓글 작성 보상");
     onToast?.(`대댓글 보상 ${formatPoint(POINT_RULES.commentReward)} 지급`);
   };
@@ -665,7 +711,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
   const handlePenalty = (target) => {
     if (!requireActivity()) return;
     if (activeBoard !== "anonymous") {
-      onToast?.("벌점은 익명 게시판에서만 줄 수 있습니다.");
+      onToast?.("벌금은 익명 게시판에서만 줄 수 있습니다.");
       return;
     }
 
@@ -673,26 +719,26 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
     const targetAuthorId = target.authorId || "";
     const fallbackBalance = Number(target.balance || 0);
     if (!targetAuthorId || amount <= 0) {
-      onToast?.("벌점으로 사용할 포인트를 입력해주세요.");
+      onToast?.("벌금으로 사용할 포인트를 입력해주세요.");
       return;
     }
     if (targetAuthorId === userId) {
-      onToast?.("내 글이나 댓글에는 벌점을 줄 수 없습니다.");
+      onToast?.("내 글이나 댓글에는 벌금을 줄 수 없습니다.");
       return;
     }
     if (hourlyPenaltyUsed + amount > POINT_RULES.penaltyHourlyLimit) {
-      onToast?.(`벌점은 1시간에 ${formatPoint(POINT_RULES.penaltyHourlyLimit)}까지 줄 수 있습니다.`);
+      onToast?.(`벌금은 1시간에 ${formatPoint(POINT_RULES.penaltyHourlyLimit)}까지 줄 수 있습니다.`);
       return;
     }
 
-    const spendResult = pointAccount?.spendPoints(amount, "익명 게시판 벌점");
+    const spendResult = pointAccount?.spendPoints(amount, "익명 게시판 벌금");
     if (!spendResult?.ok) {
       onToast?.(spendResult?.error || "포인트가 부족합니다.");
       return;
     }
     const targetResult = pointAccount?.penalizeUser?.(targetAuthorId, amount, fallbackBalance);
     if (!targetResult?.ok) {
-      onToast?.(targetResult?.error || "상대 벌점 적용에 실패했습니다.");
+      onToast?.(targetResult?.error || "상대 벌금 적용에 실패했습니다.");
       return;
     }
 
@@ -700,7 +746,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
     addPenaltyLedger(amount);
     setPenaltyAmounts((prev) => ({ ...prev, [target.key]: "" }));
     setOpenActionKey("");
-    onToast?.(`상대에게 벌점 ${formatPoint(amount)} 적용`);
+    onToast?.(`상대에게 벌금 ${formatPoint(amount)} 적용`);
   };
 
   const handleSendMessage = (target, draftKey) => {
@@ -771,7 +817,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
     );
   };
 
-  const renderUserLine = (item, fallbackBalance = 0) => (
+  const renderUserLine = (item, fallbackBalance = 0, { actions = [], trustUpdatedAt = false } = {}) => (
     (() => {
       const balance = item.authorId === userId && wallet
         ? wallet.balance
@@ -780,9 +826,20 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
       const virtueScore = item.authorId === userId && wallet
         ? wallet.virtueScore || 0
         : Number(item?.virtueScore || 0);
+      const editedAt = getEditedAt(item, { trustUpdatedAt });
       return (
         <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] leading-5 text-gray-400 dark:text-gray-500">
           <span className="font-semibold text-gray-700 dark:text-gray-200">{item.authorName || "사용자"}</span>
+          {actions.map((action) => (
+            <button
+              key={action.label}
+              type="button"
+              onClick={action.onClick}
+              className="inline-flex h-5 items-center rounded-md border border-amber-200 bg-amber-50 px-1.5 text-[11px] font-bold text-amber-700 transition hover:border-amber-300 hover:bg-amber-100 dark:border-amber-800/70 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/40"
+            >
+              {action.label}
+            </button>
+          ))}
           <span>·</span>
           <span className="inline-flex items-center gap-1 font-medium text-gray-500 dark:text-gray-400">
             {renderRankIcon(rank)}
@@ -802,6 +859,14 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
             <>
               <span>·</span>
               <span>{formatDate(item.createdAt)}</span>
+            </>
+          )}
+          {editedAt && (
+            <>
+              <span>·</span>
+              <span className="font-bold text-amber-600 dark:text-amber-300" title={`수정 시간 ${formatDate(editedAt)}`}>
+                수정됨
+              </span>
             </>
           )}
         </div>
@@ -922,6 +987,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
     const isMessageOpen = openActionKey === messageKey;
     const isPenaltyOpen = openActionKey === penaltyKey;
     const buttonClass = "relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 transition hover:border-gray-300 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:hover:text-gray-100";
+    const penaltyButtonClass = "relative inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-red-200 bg-white px-2.5 text-xs font-bold text-red-600 transition hover:border-red-300 hover:bg-red-50 dark:border-red-900 dark:bg-gray-900 dark:text-red-300 dark:hover:bg-red-950/30";
 
     return (
       <div className="mt-2">
@@ -937,14 +1003,15 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
           {anonymous && (
             <button
               onClick={() => toggleActionPanel(penaltyKey)}
-              className={`${buttonClass} ${target.penaltyPoints ? "border-red-200 text-red-500 dark:border-red-900 dark:text-red-300" : ""}`}
-              title="벌점"
-              aria-label="벌점 주기"
+              className={penaltyButtonClass}
+              title="벌금"
+              aria-label="벌금 주기"
             >
-              <BoardIcon name="penalty" />
+              <BoardIcon name="penalty" className="h-3.5 w-3.5" />
+              <span>벌금</span>
               {target.penaltyPoints > 0 && (
-                <span className="absolute -right-1 -top-1 rounded-full bg-red-500 px-1 text-[9px] font-bold leading-4 text-white">
-                  {target.penaltyPoints}
+                <span className="rounded bg-red-100 px-1 text-[10px] font-black text-red-600 dark:bg-red-950 dark:text-red-200">
+                  {formatPoint(target.penaltyPoints)}
                 </span>
               )}
             </button>
@@ -987,30 +1054,35 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
         )}
 
         {anonymous && isPenaltyOpen && (
-          <div className="mt-2 flex flex-col gap-1.5 sm:flex-row sm:items-center">
-            <div className="flex gap-2 sm:w-[240px]">
-              <input
-                value={penaltyAmounts[target.key] || ""}
-                onChange={(event) => setPenaltyAmounts((prev) => ({ ...prev, [target.key]: event.target.value }))}
-                type="number"
-                min="1"
-                max={POINT_RULES.penaltyHourlyLimit}
-                placeholder="포인트"
-                className="h-9 min-w-0 flex-1 rounded-md border border-red-200 bg-white px-3 text-xs text-gray-900 outline-none focus:ring-2 focus:ring-red-400 dark:border-red-900 dark:bg-gray-950 dark:text-gray-100"
-                aria-label="벌점 포인트"
-              />
-              <button
-                onClick={() => handlePenalty(target)}
-                className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md border-none bg-red-500 text-white"
-                title="벌점 적용"
-                aria-label="벌점 적용"
-              >
-                <BoardIcon name="check" />
-              </button>
+          <div className="mt-2 flex flex-col gap-1.5">
+            <p className="rounded-md bg-red-50 px-2.5 py-2 text-[11px] font-semibold leading-5 text-red-600 dark:bg-red-950/30 dark:text-red-300">
+              입력한 포인트만큼 내 포인트가 차감되고, 상대 포인트도 같은 만큼 차감됩니다.
+            </p>
+            <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center">
+              <div className="flex gap-2 sm:w-[240px]">
+                <input
+                  value={penaltyAmounts[target.key] || ""}
+                  onChange={(event) => setPenaltyAmounts((prev) => ({ ...prev, [target.key]: event.target.value }))}
+                  type="number"
+                  min="1"
+                  max={POINT_RULES.penaltyHourlyLimit}
+                  placeholder="차감할 포인트"
+                  className="h-9 min-w-0 flex-1 rounded-md border border-red-200 bg-white px-3 text-xs text-gray-900 outline-none focus:ring-2 focus:ring-red-400 dark:border-red-900 dark:bg-gray-950 dark:text-gray-100"
+                  aria-label="벌금 포인트"
+                />
+                <button
+                  onClick={() => handlePenalty(target)}
+                  className="inline-flex h-9 flex-shrink-0 items-center justify-center rounded-md border-none bg-red-500 px-3 text-xs font-bold text-white transition hover:bg-red-600"
+                  title="벌금 적용"
+                  aria-label="벌금 적용"
+                >
+                  벌금 적용
+                </button>
+              </div>
+              <span className="text-[11px] font-semibold text-gray-400 dark:text-gray-500">
+                1시간 {formatPoint(hourlyPenaltyUsed)} / {formatPoint(POINT_RULES.penaltyHourlyLimit)} · 누적 벌금 {formatPoint(target.penaltyPoints)}
+              </span>
             </div>
-            <span className="text-[11px] font-semibold text-gray-400 dark:text-gray-500">
-              1시간 {formatPoint(hourlyPenaltyUsed)} / {formatPoint(POINT_RULES.penaltyHourlyLimit)} · 누적 {formatPoint(target.penaltyPoints)}
-            </span>
           </div>
         )}
       </div>
@@ -1064,6 +1136,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
             onClick={() => {
               setSelectedPostId("");
               setOpenActionKey("");
+              setActiveReplyComposerId("");
             }}
             className="mb-3 inline-flex h-8 items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 text-xs font-bold text-gray-500 transition hover:text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-400 dark:hover:text-gray-100"
           >
@@ -1072,7 +1145,11 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
             </svg>
             목록
           </button>
-          {renderUserLine(post)}
+          {renderUserLine(post, 0, {
+            actions: [
+              { label: "댓글 달기", onClick: () => focusCommentComposer(post.id) },
+            ],
+          })}
           <h2 className="mt-2 text-lg font-black leading-7 text-gray-950 dark:text-white sm:text-xl [word-break:keep-all]">
             {post.title}
           </h2>
@@ -1106,7 +1183,12 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
 
                 return (
                   <div key={comment.id} className="border-t border-gray-100 py-2 first:border-t-0 dark:border-gray-800">
-                    {renderUserLine({ ...comment, authorId: commentAuthorId }, post.targetBalancePreview)}
+                    {renderUserLine({ ...comment, authorId: commentAuthorId }, post.targetBalancePreview, {
+                      actions: [
+                        { label: "대댓글 달기", onClick: () => focusReplyComposer(comment.id) },
+                      ],
+                      trustUpdatedAt: true,
+                    })}
                     <p className="mt-1 text-[13px] leading-5 text-gray-700 dark:text-gray-300 sm:text-sm">{comment.content}</p>
                     {renderTargetActions(commentTarget, { anonymous: post.board === "anonymous" })}
 
@@ -1118,7 +1200,12 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
 
                           return (
                             <div key={reply.id} className="py-1">
-                              {renderUserLine({ ...reply, authorId: replyAuthorId }, commentTarget.balance)}
+                              {renderUserLine({ ...reply, authorId: replyAuthorId }, commentTarget.balance, {
+                                actions: [
+                                  { label: "대댓글 달기", onClick: () => focusReplyComposer(comment.id) },
+                                ],
+                                trustUpdatedAt: true,
+                              })}
                               <p className="mt-1 text-[13px] leading-5 text-gray-700 dark:text-gray-300 sm:text-sm">{reply.content}</p>
                               {renderTargetActions(replyTarget, { anonymous: post.board === "anonymous" })}
                             </div>
@@ -1127,31 +1214,35 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
                       </div>
                     )}
 
-                    <div className="mt-2 flex gap-2">
-                      <input
-                        value={replyDrafts[`reply:${comment.id}`] || ""}
-                        onChange={(event) => setReplyDrafts((prev) => ({ ...prev, [`reply:${comment.id}`]: event.target.value }))}
-                        className="h-9 min-w-0 flex-1 rounded-md border border-gray-200 bg-white px-3 text-xs text-gray-900 outline-none focus:ring-2 focus:ring-amber-400 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-                        placeholder="대댓글 작성"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleReply(post.id, comment.id, post.board)}
-                        className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md border-none bg-gray-900 text-white dark:bg-white dark:text-gray-950"
-                        title={`대댓글 작성 ${formatPoint(POINT_RULES.commentReward)} 보상`}
-                        aria-label={`대댓글 작성 ${formatPoint(POINT_RULES.commentReward)} 보상`}
-                      >
-                        <BoardIcon name="send" />
-                      </button>
-                    </div>
+                    {activeReplyComposerId === comment.id && (
+                      <div className="mt-2 flex gap-2">
+                        <input
+                          id={getReplyInputId(comment.id)}
+                          value={replyDrafts[`reply:${comment.id}`] || ""}
+                          onChange={(event) => setReplyDrafts((prev) => ({ ...prev, [`reply:${comment.id}`]: event.target.value }))}
+                          className="h-9 min-w-0 flex-1 rounded-md border border-gray-200 bg-white px-3 text-xs text-gray-900 outline-none focus:ring-2 focus:ring-amber-400 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                          placeholder="대댓글 작성"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleReply(post.id, comment.id, post.board)}
+                          className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md border-none bg-gray-900 text-white dark:bg-white dark:text-gray-950"
+                          title={`대댓글 작성 ${formatPoint(POINT_RULES.commentReward)} 보상`}
+                          aria-label={`대댓글 작성 ${formatPoint(POINT_RULES.commentReward)} 보상`}
+                        >
+                          <BoardIcon name="send" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
           )}
 
-          <div className="flex gap-2">
+          <div className="sticky bottom-0 z-20 -mx-3 flex gap-2 border-t border-gray-200 bg-white/95 px-3 py-2 backdrop-blur dark:border-gray-800 dark:bg-gray-900/95 sm:-mx-4 sm:px-4">
             <input
+              id={getCommentInputId(post.id)}
               value={comments[post.id] || ""}
               onChange={(event) => setComments((prev) => ({ ...prev, [post.id]: event.target.value }))}
               className="h-10 min-w-0 flex-1 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-amber-400 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
@@ -1246,7 +1337,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
 
           {!boardLoading && !boardRemoteReady && (
             <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-600 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
-              게시판 서버 연결이 필요합니다. 현재 화면의 글은 임시 데이터라 다른 사용자와 공유되지 않습니다.
+              게시판 연결이 불안정합니다. 현재 화면의 글은 다른 사용자와 공유되지 않을 수 있습니다.
             </div>
           )}
 
@@ -1421,7 +1512,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
                           <span>좋아요 {post.likes}</span>
                           <span>댓글 {threadCount}</span>
                           {post.board === "anonymous" && post.penaltyPoints > 0 && (
-                            <span className="text-red-500 dark:text-red-300">벌점 {formatPoint(post.penaltyPoints)}</span>
+                            <span className="text-red-500 dark:text-red-300">벌금 {formatPoint(post.penaltyPoints)}</span>
                           )}
                         </div>
                       </div>
@@ -1485,7 +1576,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
               ))}
             </div>
             <div className="mt-2 rounded-md bg-red-50 p-2.5 text-xs font-semibold leading-5 text-red-600 dark:bg-red-950/30 dark:text-red-300">
-              익명 게시글, 댓글, 대댓글에는 내 포인트를 사용해 상대에게 벌점을 줄 수 있습니다.
+              익명 게시글, 댓글, 대댓글에는 내 포인트를 사용해 입력한 만큼 상대 포인트를 차감하는 벌금을 줄 수 있습니다.
             </div>
           </div>
         </aside>
