@@ -1,10 +1,10 @@
 {
-  "event_id": "bulmung_contest_20260706",
+  "event_id": "bulmung_contest_20260705",
   "title": "제1회 불멍 공모전",
-  "status": "scheduled",
+  "status": "active",
   "timezone": "Asia/Seoul",
-  "start_at": "2026-07-06T00:00:00+09:00",
-  "end_at": "2026-09-06T23:59:59+09:00",
+  "start_at": "2026-07-05T00:00:00+09:00",
+  "end_at": "2026-09-30T23:59:59+09:00",
   "prize_pool_krw": 2000000,
   "prizes": [
     {
@@ -27,11 +27,31 @@
     }
   ],
   "score_weights": {
-    "game_clear_rank": 10,
+    "game_clear": 10,
     "friend_invite": 30,
     "views": 30,
     "likes": 30
   },
+  "game_clear_tiers": [
+    {
+      "condition": "100퍼센트 츠쿠요미 클리어",
+      "points": 10
+    },
+    {
+      "condition": "70퍼센트 츠쿠요미 클리어",
+      "points": 7
+    },
+    {
+      "condition": "50퍼센트 츠쿠요미 클리어",
+      "points": 5
+    },
+    {
+      "condition": "50퍼센트 미만 츠쿠요미 클리어",
+      "points": 3
+    }
+  ],
+  "eligibility_notice": "애즈덕과 불멍키우기의 로그인 계정이 동일해야 이벤트 참여가 가능합니다.",
+  "accepted_platforms": ["youtube"],
   "assets": {
     "pamphlet": "bulmung_contest_pamphlet_final.png"
   }
