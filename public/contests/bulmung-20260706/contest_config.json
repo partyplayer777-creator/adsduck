@@ -21,7 +21,7 @@
     },
     {
       "name": "특별상",
-      "condition": "게임클리어 순위 1등",
+      "condition": "플레이타임 최단 기록",
       "amount_krw": 500000,
       "can_stack_with_general_prize": true
     }
