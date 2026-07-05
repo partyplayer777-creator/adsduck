@@ -1,0 +1,38 @@
+{
+  "event_id": "bulmung_contest_20260706",
+  "title": "제1회 불멍 공모전",
+  "status": "scheduled",
+  "timezone": "Asia/Seoul",
+  "start_at": "2026-07-06T00:00:00+09:00",
+  "end_at": "2026-09-06T23:59:59+09:00",
+  "prize_pool_krw": 2000000,
+  "prizes": [
+    {
+      "name": "종합 1등",
+      "rank_from": 1,
+      "rank_to": 1,
+      "amount_krw": 1000000
+    },
+    {
+      "name": "종합 2등~26등",
+      "rank_from": 2,
+      "rank_to": 26,
+      "amount_krw": 20000
+    },
+    {
+      "name": "특별상",
+      "condition": "게임클리어 순위 1등",
+      "amount_krw": 500000,
+      "can_stack_with_general_prize": true
+    }
+  ],
+  "score_weights": {
+    "game_clear_rank": 10,
+    "friend_invite": 30,
+    "views": 30,
+    "likes": 30
+  },
+  "assets": {
+    "pamphlet": "bulmung_contest_pamphlet_final.png"
+  }
+}

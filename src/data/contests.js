@@ -1,5 +1,27 @@
 export const contests = [
   {
+    id: 9,
+    company: "불멍 키우기",
+    logo: "https://ui-avatars.com/api/?name=불멍&background=f97316&color=fff&size=80&bold=true",
+    title: "제1회 불멍 공모전",
+    description:
+      "불멍 게임을 클리어하고, 친구를 초대하고, 내 기록을 공유해 첫 번째 불멍 공모전 우승자에 도전하세요. 게임클리어 순위, 친구초대, 조회수, 좋아요 점수를 합산해 종합 순위를 산정합니다.",
+    deadline: "2026-09-06",
+    prize: "1등 100만원 / 2등~26등 각 2만원 / 특별상 50만원",
+    prizeAmount: 1000000,
+    participants: 0,
+    category: "게임 이벤트",
+    notionLink: "contests/bulmung-20260706/contest_rules.md",
+    pamphletImage: "contests/bulmung-20260706/bulmung_contest_pamphlet_final.png",
+    status: "진행중",
+    requirements: [
+      "공모전 기간: 2026.07.06 월요일 00:00 ~ 2026.09.06 일요일 23:59 KST",
+      "종합 점수 100점: 게임클리어 순위 10점, 친구초대 30점, 조회수 30점, 좋아요 30점",
+      "특별상은 게임클리어 순위 1등에게 지급하며 종합상과 중복 수상 가능합니다.",
+      "동일인 중복 계정, 자동화 조회수, 비정상 좋아요, 허위 초대는 집계에서 제외됩니다.",
+    ],
+  },
+  {
     id: 1,
     company: "스타트업 코리아",
     logo: "https://ui-avatars.com/api/?name=SK&background=3b82f6&color=fff&size=80&bold=true",
@@ -163,6 +185,7 @@ export const contests = [
 
 export const categories = [
   "전체",
+  "게임 이벤트",
   "SNS 마케팅",
   "리뷰 콘텐츠",
   "인스타그램",

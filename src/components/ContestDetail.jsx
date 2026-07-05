@@ -17,6 +17,12 @@ function getStoredVisited() {
   }
 }
 
+function publicAssetPath(path) {
+  if (!path) return "";
+  if (/^(https?:)?\/\//.test(path) || path.startsWith("/")) return path;
+  return `${import.meta.env.BASE_URL}${path}`;
+}
+
 function RelatedLogo({ contest }) {
   const [err, setErr] = useState(false);
   if (err) {
@@ -284,6 +290,17 @@ export default function ContestDetail({ contest, contests = [], onBack, onSelect
                 </h1>
               </div>
             </div>
+
+            {contest.pamphletImage && (
+              <div className="mt-8 overflow-hidden rounded-3xl border border-white/15 bg-black/35 shadow-2xl shadow-black/40">
+                <img
+                  src={publicAssetPath(contest.pamphletImage)}
+                  alt={`${contest.title} 팜플랫`}
+                  className="block w-full"
+                  loading="eager"
+                />
+              </div>
+            )}
 
             {/* Info cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-8">
@@ -593,7 +610,7 @@ export default function ContestDetail({ contest, contests = [], onBack, onSelect
                   </p>
                 </div>
                 <a
-                  href={contest.notionLink}
+                  href={publicAssetPath(contest.notionLink)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center justify-center gap-3 px-7 py-4 bg-gradient-to-r from-amber-400 to-yellow-400 text-gray-950 font-extrabold rounded-2xl shadow-lg shadow-amber-500/30 hover:from-amber-300 hover:to-yellow-300 hover:shadow-xl hover:shadow-amber-500/40 hover:-translate-y-0.5 transition-all no-underline flex-shrink-0"
