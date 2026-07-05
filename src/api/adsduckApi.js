@@ -132,7 +132,7 @@ function makeClientIdempotencyKey(prefix) {
 }
 
 export async function getContestLeaderboard(contestId) {
-  if (!appConfig.apiBaseUrl) {
+  if (USE_LOCAL_MOCKS) {
     return getMockLeaderboard(contestId);
   }
 
@@ -140,7 +140,7 @@ export async function getContestLeaderboard(contestId) {
 }
 
 export function watchContestLeaderboard(contestId, onUpdate) {
-  if (!appConfig.apiBaseUrl || typeof EventSource === "undefined") {
+  if (USE_LOCAL_MOCKS) {
     let active = true;
     const tick = async () => {
       const data = getMockLeaderboard(contestId);
@@ -148,6 +148,24 @@ export function watchContestLeaderboard(contestId, onUpdate) {
     };
     tick();
     const interval = window.setInterval(tick, 5000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }
+
+  if (!appConfig.apiBaseUrl || typeof EventSource === "undefined") {
+    let active = true;
+    const tick = async () => {
+      try {
+        const data = await getContestLeaderboard(contestId);
+        if (active) onUpdate(data);
+      } catch {
+        // Initial load already surfaces errors through getContestLeaderboard.
+      }
+    };
+    tick();
+    const interval = window.setInterval(tick, 10000);
     return () => {
       active = false;
       window.clearInterval(interval);
@@ -167,7 +185,7 @@ export function watchContestLeaderboard(contestId, onUpdate) {
 }
 
 export async function joinContest(contestId, authSession) {
-  if (!appConfig.apiBaseUrl) {
+  if (USE_LOCAL_MOCKS) {
     return { ok: true, mode: "mock" };
   }
 
@@ -179,13 +197,14 @@ export async function joinContest(contestId, authSession) {
 }
 
 export async function submitContestEntry(contestId, payload, authSession) {
-  if (!appConfig.apiBaseUrl) {
+  if (USE_LOCAL_MOCKS) {
     const entriesByContest = getStoredMockEntries();
     const key = String(contestId);
     const entries = entriesByContest[key] || createSeedEntries(key);
     const userId = authSession?.user?.id || "demo-user";
+    const existing = entries.find((item) => item.user_id === userId);
     const entry = {
-      id: `${key}-${userId}`,
+      id: existing?.id || `${key}-${userId}`,
       contest_id: key,
       user_id: userId,
       display_name: authSession?.user?.display_name || authSession?.user?.email || "demo.creator",
@@ -194,7 +213,8 @@ export async function submitContestEntry(contestId, payload, authSession) {
       title: payload.title || "제출 영상",
       like_count: 0,
       view_count: 0,
-      submitted_at: new Date().toISOString(),
+      submitted_at: existing?.submitted_at || new Date().toISOString(),
+      last_synced_at: new Date().toISOString(),
     };
     entriesByContest[key] = [entry, ...entries.filter((item) => item.user_id !== userId)];
     setStoredMockEntries(entriesByContest);

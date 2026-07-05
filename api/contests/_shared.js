@@ -1,7 +1,33 @@
-import { supabase } from "../lib/supabase.mjs";
-import { fetchExternalVideoMetrics, isMetricStale } from "./videoMetrics.mjs";
+import { requireAuth } from "../_auth.js";
+import { getSupabase } from "../_supabase.js";
+import { refreshEntryMetrics, refreshStaleEntryMetrics } from "./_metrics.js";
 
-export async function upsertProfileFromAuth(authPayload, profilePayload = null) {
+function badRequest(message) {
+  const error = new Error(message);
+  error.status = 400;
+  return error;
+}
+
+export function getContestId(req) {
+  const contestId = String(req.query?.contestId || "").trim();
+  if (!contestId) throw badRequest("contestId is required.");
+  return contestId;
+}
+
+export async function getAuthPayload(req) {
+  return requireAuth(req);
+}
+
+export function normalizeMetricCount(value, fieldName) {
+  if (value === undefined || value === null || value === "") return 0;
+  const number = Math.floor(Number(value));
+  if (!Number.isFinite(number) || number < 0) {
+    throw badRequest(`${fieldName} must be a non-negative number.`);
+  }
+  return number;
+}
+
+export async function upsertProfileFromAuth(supabase, authPayload, profilePayload = null) {
   if (!authPayload?.sub) return null;
 
   const profile = {
@@ -23,7 +49,8 @@ export async function upsertProfileFromAuth(authPayload, profilePayload = null) 
 }
 
 export async function joinContest({ contestId, authPayload, profilePayload = null }) {
-  await upsertProfileFromAuth(authPayload, profilePayload);
+  const supabase = getSupabase();
+  await upsertProfileFromAuth(supabase, authPayload, profilePayload);
 
   const row = {
     contest_id: String(contestId),
@@ -42,18 +69,8 @@ export async function joinContest({ contestId, authPayload, profilePayload = nul
   return data;
 }
 
-function normalizeMetricCount(value, fieldName) {
-  if (value === undefined || value === null || value === "") return 0;
-  const number = Math.floor(Number(value));
-  if (!Number.isFinite(number) || number < 0) {
-    const error = new Error(`${fieldName} must be a non-negative number.`);
-    error.status = 400;
-    throw error;
-  }
-  return number;
-}
-
 export async function submitEntry({ contestId, authPayload, payload }) {
+  const supabase = getSupabase();
   await joinContest({ contestId, authPayload, profilePayload: payload.profile });
 
   const { data: existing, error: existingError } = await supabase
@@ -88,45 +105,12 @@ export async function submitEntry({ contestId, authPayload, payload }) {
     .single();
 
   if (error) throw error;
-  const syncResult = await refreshEntryMetrics(data, { force: true }).catch(() => null);
+  const syncResult = await refreshEntryMetrics(supabase, data, { force: true }).catch(() => null);
   return { ...(syncResult?.entry || data), created: !existing };
 }
 
-async function refreshEntryMetrics(entry, { force = false } = {}) {
-  if (!entry?.id || (!force && !isMetricStale(entry))) return { ok: false, skipped: true };
-
-  const metrics = await fetchExternalVideoMetrics({
-    platform: entry.platform,
-    snsUrl: entry.sns_url,
-  });
-
-  if (!metrics.ok) return metrics;
-
-  const { data, error } = await supabase
-    .from("contest_entries")
-    .update({
-      like_count: metrics.likeCount,
-      view_count: metrics.viewCount,
-      last_synced_at: new Date().toISOString(),
-    })
-    .eq("id", entry.id)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return { ok: true, entry: data, provider: metrics.provider };
-}
-
-async function refreshStaleEntryMetrics(entries, { limit = 20 } = {}) {
-  let updated = 0;
-  for (const entry of entries.slice(0, limit)) {
-    const result = await refreshEntryMetrics(entry).catch(() => null);
-    if (result?.ok) updated += 1;
-  }
-  return updated;
-}
-
 export async function getLeaderboard(contestId) {
+  const supabase = getSupabase();
   const loadEntries = () => supabase
     .from("contest_entry_leaderboard")
     .select("*")
@@ -138,7 +122,7 @@ export async function getLeaderboard(contestId) {
   let { data: entries, error } = await loadEntries();
 
   if (error) throw error;
-  const updatedCount = await refreshStaleEntryMetrics(entries || []);
+  const updatedCount = await refreshStaleEntryMetrics(supabase, entries || []);
   if (updatedCount > 0) {
     const refreshed = await loadEntries();
     if (refreshed.error) throw refreshed.error;
@@ -161,6 +145,9 @@ export async function getLeaderboard(contestId) {
 }
 
 export async function updateEntryMetrics({ entryId, snsUrl, likeCount, viewCount }) {
+  if (!entryId && !snsUrl) throw badRequest("entryId or snsUrl is required.");
+
+  const supabase = getSupabase();
   const patch = {
     like_count: normalizeMetricCount(likeCount, "likeCount"),
     view_count: normalizeMetricCount(viewCount, "viewCount"),
