@@ -10,6 +10,7 @@ const SOCIAL_PROVIDERS = [
   { id: "naver", oauthProvider: "custom:naver", settingKeys: ["custom:naver", "naver"] },
 ];
 const SOCIAL_PROVIDER_IDS = SOCIAL_PROVIDERS.map((provider) => provider.id);
+const DEFAULT_ENABLED_PROVIDERS = ["google"];
 
 function normalizeProviderId(provider) {
   if (provider === "custom:naver") return "naver";
@@ -184,7 +185,7 @@ export function useAuthSession() {
   const [session, setSession] = useState(() => (supabase ? null : readStoredSession()));
   const [authError, setAuthError] = useState("");
   const [enabledProviders, setEnabledProviders] = useState(() => (
-    supabase ? [] : SOCIAL_PROVIDER_IDS
+    supabase ? DEFAULT_ENABLED_PROVIDERS : SOCIAL_PROVIDER_IDS
   ));
 
   const persistSession = useCallback((nextSession) => {
@@ -254,10 +255,11 @@ export function useAuthSession() {
       .then((response) => (response.ok ? response.json() : null))
       .then((settings) => {
         if (ignore || !settings?.external) return;
-        setEnabledProviders(resolveEnabledProviders(settings));
+        const nextProviders = resolveEnabledProviders(settings);
+        setEnabledProviders(nextProviders.length ? nextProviders : DEFAULT_ENABLED_PROVIDERS);
       })
       .catch(() => {
-        if (!ignore) setEnabledProviders([]);
+        // Keep the default Google path available if the settings endpoint is slow or blocked.
       });
 
     return () => {
