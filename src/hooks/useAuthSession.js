@@ -315,7 +315,10 @@ export function useAuthSession() {
         provider: resolveOAuthProvider(safeProvider),
         options: {
           redirectTo: makeReturnTo(),
-          queryParams: safeProvider === "google" ? { prompt: "select_account" } : undefined,
+          queryParams: {
+            apikey: appConfig.supabaseAnonKey,
+            ...(safeProvider === "google" ? { prompt: "select_account" } : {}),
+          },
         },
       });
 
