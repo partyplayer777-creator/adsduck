@@ -77,25 +77,7 @@ async function handleCharge(req, res) {
     return;
   }
 
-  const amount = Math.floor(Number(req.body?.amount || 0));
-  if (!Number.isFinite(amount) || amount < 1000) {
-    sendJson(res, 400, { error: "Charge amount must be at least 1,000 points." });
-    return;
-  }
-
-  const authPayload = await requireAuth(req);
-  const supabase = getSupabase();
-  await ensureProfile(supabase, authPayload);
-
-  const { data, error } = await supabase.rpc("credit_points", {
-    p_user_id: authPayload.sub,
-    p_amount: amount,
-    p_description: "Point charge",
-    p_idempotency_key: makeIdempotencyKey(req, `point-charge-${amount}`),
-  });
-
-  if (error) throw error;
-  sendJson(res, resultStatus(data), data);
+  sendJson(res, 403, { error: "Point charging is currently disabled." });
 }
 
 async function handleTransaction(req, res) {

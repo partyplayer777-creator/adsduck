@@ -70,7 +70,7 @@ function getInitialRoute() {
       page: "points",
       contest: null,
       termsSection: DEFAULT_TERMS_KEY,
-      title: "포인트 충전 — AdsDuck",
+      title: "포인트 내역 — AdsDuck",
       historyState: { page: "points" },
     };
   }
@@ -287,7 +287,7 @@ export default function App() {
       } else if (target === "messages") {
         document.title = "쪽지함 — AdsDuck";
       } else if (target === "points") {
-        document.title = "포인트 충전 — AdsDuck";
+        document.title = "포인트 내역 — AdsDuck";
       }
       window.scrollTo({ top: 0, behavior: "smooth" });
     }

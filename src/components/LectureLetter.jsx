@@ -598,7 +598,7 @@ export default function LectureLetter({ authSession, onRequireLogin, onToast, on
               onClick={onOpenPoints}
               className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm font-bold text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
             >
-              포인트 충전
+              포인트 내역
             </button>
           </div>
         </div>

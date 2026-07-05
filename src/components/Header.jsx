@@ -69,7 +69,7 @@ export default function Header({ onNavigate, currentPage, darkMode, onToggleDark
     ...(isAuthenticated
       ? [
           { key: "messages", label: "쪽지함", icon: "M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10Z" },
-          { key: "points", label: "포인트 충전", icon: "M21 12V7a2 2 0 0 0-2-2H5a3 3 0 0 0 0 6h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H5a3 3 0 0 1-3-3V8m15 6h.01" },
+          { key: "points", label: "포인트 내역", icon: "M21 12V7a2 2 0 0 0-2-2H5a3 3 0 0 0 0 6h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H5a3 3 0 0 1-3-3V8m15 6h.01" },
         ]
       : []),
   ];

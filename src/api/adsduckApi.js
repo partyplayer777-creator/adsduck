@@ -216,17 +216,8 @@ export async function createPaymentCheckout(productId, authSession) {
   });
 }
 
-export async function createPointChargeCheckout(amount, authSession) {
-  const chargeAmount = Math.floor(Number(amount || 0));
-  return fetchJson("/api/payments/checkout", {
-    method: "POST",
-    headers: authHeaders(authSession),
-    body: JSON.stringify({
-      kind: "point-charge",
-      amount: chargeAmount,
-      productId: `adsduck-point-charge-${chargeAmount}`,
-    }),
-  });
+export async function createPointChargeCheckout() {
+  throw new Error("Point charging is currently disabled.");
 }
 
 export async function verifyOrganizerBusiness(payload, authSession) {
@@ -400,15 +391,8 @@ export async function getPointWallet(authSession) {
   });
 }
 
-export async function chargeServerPoints(amount, authSession) {
-  return fetchJson("/api/points/charge", {
-    method: "POST",
-    headers: {
-      ...authHeaders(authSession),
-      "Idempotency-Key": makeClientIdempotencyKey(`point-charge-${amount}`),
-    },
-    body: JSON.stringify({ amount }),
-  });
+export async function chargeServerPoints() {
+  throw new Error("Point charging is currently disabled.");
 }
 
 export async function recordPointTransaction(payload, authSession) {

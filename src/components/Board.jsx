@@ -132,6 +132,13 @@ function formatPoint(value) {
   return `${Number(value || 0).toLocaleString()}P`;
 }
 
+function todayKey() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
 function formatFileSize(bytes) {
   const value = Number(bytes || 0);
   if (value >= 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)}MB`;
@@ -227,6 +234,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
   const user = authSession?.user || null;
   const userId = user?.id || null;
   const wallet = pointAccount?.wallet || null;
+  const attendanceReceivedToday = wallet?.lastAttendanceDate === todayKey();
   const hourlyPenaltyUsed = getHourlyPenaltyUsed(userId);
   const activeMeta = BOARD_TABS.find((tab) => tab.key === activeBoard) || BOARD_TABS[0];
   const emoteMap = useMemo(
@@ -787,6 +795,10 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
   const handleAttendance = () => {
     if (!userId) {
       onRequireLogin?.("login");
+      return;
+    }
+    if (attendanceReceivedToday) {
+      onToast?.("오늘은 이미 출석 보너스를 받았습니다.");
       return;
     }
     const result = pointAccount?.checkAttendance();
@@ -1551,9 +1563,10 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
               <>
                 <button
                   onClick={handleAttendance}
-                  className="mt-3 h-9 w-full rounded-md border-none bg-amber-400 text-xs font-bold text-gray-950 hover:bg-amber-300"
+                  disabled={attendanceReceivedToday}
+                  className="mt-3 h-9 w-full rounded-md border-none bg-amber-400 text-xs font-bold text-gray-950 hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 dark:disabled:bg-gray-800 dark:disabled:text-gray-400"
                 >
-                  출석 보너스 받기
+                  {attendanceReceivedToday ? "오늘은 이미 받았습니다" : "출석 보너스 받기"}
                 </button>
                 <p className="mt-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
                   연속 출석 {wallet?.attendanceDay || 0}일 · 10일차부터 500P 고정
@@ -1562,7 +1575,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
                   onClick={onOpenPoints}
                   className="mt-3 h-9 w-full rounded-md border border-gray-200 bg-white text-xs font-bold text-gray-700 transition hover:bg-gray-50 hover:text-gray-950 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:bg-gray-800"
                 >
-                  포인트 충전
+                  포인트 내역
                 </button>
               </>
             ) : (

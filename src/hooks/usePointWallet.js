@@ -279,11 +279,10 @@ export function usePointWallet(session) {
     });
   }, [updateWallet]);
 
-  const chargePoints = useCallback((amount) => {
-    const value = Math.max(0, Number(amount) || 0);
-    if (!value) return { ok: false, error: "충전 금액을 입력해주세요." };
-    return addPoints(value, `포인트 충전 ${value.toLocaleString()}원`, "charge");
-  }, [addPoints]);
+  const chargePoints = useCallback(() => ({
+    ok: false,
+    error: "현금 포인트 충전은 현재 제공하지 않습니다.",
+  }), []);
 
   const checkAttendance = useCallback(() => {
     const date = todayKey();
@@ -329,6 +328,7 @@ export function usePointWallet(session) {
       description: "출석 보너스",
       refType: "attendance",
       refId: date,
+      metadata: { date, day: nextDay, bonus },
       idempotencyKey: `attendance-${userId}-${date}`,
     });
   }, [session, updateWallet, userId, wallets]);

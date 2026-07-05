@@ -11,7 +11,6 @@ import {
   getOrganizerPaymentCode,
 } from "./services/organizerPayments.mjs";
 import {
-  chargePoints,
   createLectureAdminPost,
   createLectureReport,
   getLectureAuthorEarnings,
@@ -87,14 +86,7 @@ app.get("/api/points/wallet", requireAuth, async (req, res, next) => {
 
 app.post("/api/points/charge", requireAuth, async (req, res, next) => {
   try {
-    const amount = Math.floor(Number(req.body?.amount || 0));
-    if (!Number.isFinite(amount) || amount < 1000) {
-      res.status(400).json({ error: "Charge amount must be at least 1,000 points." });
-      return;
-    }
-
-    const result = await chargePoints(req.auth, amount, makeIdempotencyKey(req, `point-charge-${amount}`));
-    res.status(resultStatus(result)).json(result);
+    res.status(403).json({ error: "Point charging is currently disabled." });
   } catch (error) {
     next(error);
   }
