@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const PROVIDERS = [
   { provider: "google", label: "Google로 계속", icon: GoogleIcon, tone: "border-gray-200 bg-white text-gray-800" },
@@ -50,14 +50,15 @@ export default function AuthDialog({
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
   const [localError, setLocalError] = useState("");
+  const autoSignupStartedRef = useRef("");
   const isSignup = mode === "signup";
-
-  if (!open) return null;
+  const visibleProviders = PROVIDERS.filter((item) => enabledProviders.includes(item.provider));
+  const showEmailForm = !isSignup;
+  const autoSignupProvider = isSignup && visibleProviders.length === 1 ? visibleProviders[0].provider : null;
 
   const title = isSignup ? "회원가입" : "로그인";
-  const visibleProviders = PROVIDERS.filter((item) => enabledProviders.includes(item.provider));
   const subtitle = isSignup
-    ? "실제 계정으로 가입하고 공모전 참여 기록과 포인트를 저장하세요."
+    ? "소셜 계정으로 가입하고 공모전 참여 기록과 포인트를 저장하세요."
     : "실제 계정으로 로그인해 공모전 참여 기록과 포인트를 불러오세요.";
 
   const requireSignupConsent = () => {
@@ -69,9 +70,8 @@ export default function AuthDialog({
   };
 
   const handleProviderClick = async (provider) => {
-    if (!requireSignupConsent()) return;
     setPending(true);
-    const started = await onProviderLogin?.(provider, mode, { marketingConsent });
+    const started = await onProviderLogin?.(provider, mode, { marketingConsent: false });
     setPending(false);
     if (started === false) return;
     setLocalError("");
@@ -107,6 +107,42 @@ export default function AuthDialog({
     onClose?.();
   };
 
+  useEffect(() => {
+    if (!open) {
+      autoSignupStartedRef.current = "";
+      return;
+    }
+    if (!autoSignupProvider) return;
+
+    const autoSignupKey = `${mode}:${autoSignupProvider}`;
+    if (autoSignupStartedRef.current === autoSignupKey) return;
+    autoSignupStartedRef.current = autoSignupKey;
+
+    let active = true;
+    Promise.resolve(onProviderLogin?.(autoSignupProvider, mode, { marketingConsent: false }))
+      .then((started) => {
+        if (!active) return;
+        if (started === false) {
+          autoSignupStartedRef.current = "";
+          setLocalError("소셜 로그인을 시작하지 못했습니다.");
+          return;
+        }
+        setLocalError("");
+      })
+      .catch((error) => {
+        if (!active) return;
+        autoSignupStartedRef.current = "";
+        setLocalError(error?.message || "소셜 로그인을 시작하지 못했습니다.");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [autoSignupProvider, mode, onProviderLogin, open]);
+
+  if (!open) return null;
+  if (autoSignupProvider && !localError && !error) return null;
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-950/55 px-4 backdrop-blur-sm">
       <div className="w-full max-w-[420px] rounded-2xl bg-white p-6 shadow-2xl dark:bg-gray-900">
@@ -128,7 +164,13 @@ export default function AuthDialog({
           </button>
         </div>
 
-        {isSignup && (
+        {isSignup && visibleProviders.length === 0 && (
+          <p className="rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-xs font-bold leading-relaxed text-amber-800 dark:border-amber-900/60 dark:bg-amber-900/20 dark:text-amber-200">
+            소셜 로그인 설정을 확인하는 중입니다. 잠시 후 다시 시도하세요.
+          </p>
+        )}
+
+        {isSignup && showEmailForm && (
           <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-lg border border-amber-200 bg-amber-50/80 p-3 dark:border-amber-900/60 dark:bg-amber-900/20">
             <input
               type="checkbox"
@@ -147,41 +189,45 @@ export default function AuthDialog({
           </label>
         )}
 
-        <form className="space-y-3" onSubmit={handleEmailSubmit}>
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="이메일"
-            autoComplete="email"
-            className="h-12 w-full rounded-lg border border-gray-200 bg-white px-4 text-sm font-bold text-gray-950 outline-none transition focus:border-amber-400 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
-          />
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder="비밀번호"
-            autoComplete={isSignup ? "new-password" : "current-password"}
-            className="h-12 w-full rounded-lg border border-gray-200 bg-white px-4 text-sm font-bold text-gray-950 outline-none transition focus:border-amber-400 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
-          />
-          <button
-            type="submit"
-            disabled={pending}
-            className="flex h-12 w-full items-center justify-center rounded-lg border-none bg-gray-950 px-4 text-sm font-black text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-200"
-          >
-            {pending ? "처리 중" : isSignup ? "이메일로 회원가입" : "이메일로 로그인"}
-          </button>
-        </form>
+        {showEmailForm && (
+          <form className="space-y-3" onSubmit={handleEmailSubmit}>
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="이메일"
+              autoComplete="email"
+              className="h-12 w-full rounded-lg border border-gray-200 bg-white px-4 text-sm font-bold text-gray-950 outline-none transition focus:border-amber-400 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
+            />
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="비밀번호"
+              autoComplete="current-password"
+              className="h-12 w-full rounded-lg border border-gray-200 bg-white px-4 text-sm font-bold text-gray-950 outline-none transition focus:border-amber-400 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
+            />
+            <button
+              type="submit"
+              disabled={pending}
+              className="flex h-12 w-full items-center justify-center rounded-lg border-none bg-gray-950 px-4 text-sm font-black text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-200"
+            >
+              {pending ? "처리 중" : "이메일로 로그인"}
+            </button>
+          </form>
+        )}
 
         {visibleProviders.length > 0 && (
           <>
-            <div className="my-4 flex items-center gap-3">
-              <span className="h-px flex-1 bg-gray-200 dark:bg-gray-800" />
-              <span className="text-[11px] font-black uppercase text-gray-400">or</span>
-              <span className="h-px flex-1 bg-gray-200 dark:bg-gray-800" />
-            </div>
+            {showEmailForm && (
+              <div className="my-4 flex items-center gap-3">
+                <span className="h-px flex-1 bg-gray-200 dark:bg-gray-800" />
+                <span className="text-[11px] font-black uppercase text-gray-400">or</span>
+                <span className="h-px flex-1 bg-gray-200 dark:bg-gray-800" />
+              </div>
+            )}
 
-            <div className="space-y-2">
+            <div className={showEmailForm ? "space-y-2" : "space-y-2 pt-1"}>
               {visibleProviders.map((item) => {
                 const Icon = item.icon;
                 return (
