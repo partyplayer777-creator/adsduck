@@ -1,5 +1,6 @@
 node_modules
 dist
+output
 .git
 .vercel-jins-backup
 supabase/.temp
