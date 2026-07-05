@@ -425,13 +425,6 @@ export default function App() {
           }
           return started;
         }}
-        onEmailLogin={async (email, password, mode, options) => {
-          const started = await authSession.loginWithEmail(email, password, mode, options);
-          if (started !== false) {
-            setAuthDialogMode(null);
-          }
-          return started;
-        }}
       />
       <ScrollToTop />
     </div>

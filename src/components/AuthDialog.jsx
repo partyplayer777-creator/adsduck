@@ -42,67 +42,29 @@ export default function AuthDialog({
   error,
   onClose,
   onProviderLogin,
-  onEmailLogin,
   enabledProviders = [],
 }) {
-  const [marketingConsent, setMarketingConsent] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
   const [localError, setLocalError] = useState("");
   const isSignup = mode === "signup";
   const providerIds = enabledProviders.length > 0 ? enabledProviders : (isSignup ? ["google"] : []);
   const visibleProviders = PROVIDERS.filter((item) => providerIds.includes(item.provider));
-  const showEmailForm = !isSignup;
 
   const title = isSignup ? "회원가입" : "로그인";
   const subtitle = isSignup
     ? "소셜 계정으로 가입하고 공모전 참여 기록과 포인트를 저장하세요."
     : "실제 계정으로 로그인해 공모전 참여 기록과 포인트를 불러오세요.";
 
-  const requireSignupConsent = () => {
-    if (isSignup && !marketingConsent) {
-      setLocalError("필수 동의 항목을 체크해야 회원가입할 수 있습니다.");
-      return false;
-    }
-    return true;
-  };
-
   const handleProviderClick = async (provider) => {
     setPending(true);
-    const started = await onProviderLogin?.(provider, mode, { marketingConsent: false });
+    const started = await onProviderLogin?.(provider, mode);
     setPending(false);
     if (started === false) return;
     setLocalError("");
-  };
-
-  const handleEmailSubmit = async (event) => {
-    event.preventDefault();
-    if (!requireSignupConsent()) return;
-
-    const normalizedEmail = email.trim();
-    if (!normalizedEmail || !password) {
-      setLocalError("이메일과 비밀번호를 입력하세요.");
-      return;
-    }
-    if (password.length < 6) {
-      setLocalError("비밀번호는 6자 이상이어야 합니다.");
-      return;
-    }
-
-    setPending(true);
-    const started = await onEmailLogin?.(normalizedEmail, password, mode, { marketingConsent });
-    setPending(false);
-    if (started === false) return;
-
-    setLocalError("");
-    setPassword("");
-    onClose?.();
   };
 
   const handleClose = () => {
     setLocalError("");
-    setPassword("");
     onClose?.();
   };
 
@@ -135,80 +97,23 @@ export default function AuthDialog({
           </p>
         )}
 
-        {isSignup && showEmailForm && (
-          <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-lg border border-amber-200 bg-amber-50/80 p-3 dark:border-amber-900/60 dark:bg-amber-900/20">
-            <input
-              type="checkbox"
-              checked={marketingConsent}
-              onChange={(event) => {
-                setMarketingConsent(event.target.checked);
-                if (event.target.checked) setLocalError("");
-              }}
-              className="mt-0.5 h-4 w-4 flex-shrink-0 accent-amber-500"
-              aria-required="true"
-            />
-            <span className="text-xs leading-relaxed text-gray-700 dark:text-gray-300">
-              <b className="font-black text-gray-950 dark:text-white">[필수]</b>{" "}
-              공모전 업데이트와 광고/이벤트 안내 수신에 동의합니다.
-            </span>
-          </label>
-        )}
-
-        {showEmailForm && (
-          <form className="space-y-3" onSubmit={handleEmailSubmit}>
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="이메일"
-              autoComplete="email"
-              className="h-12 w-full rounded-lg border border-gray-200 bg-white px-4 text-sm font-bold text-gray-950 outline-none transition focus:border-amber-400 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
-            />
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="비밀번호"
-              autoComplete="current-password"
-              className="h-12 w-full rounded-lg border border-gray-200 bg-white px-4 text-sm font-bold text-gray-950 outline-none transition focus:border-amber-400 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
-            />
-            <button
-              type="submit"
-              disabled={pending}
-              className="flex h-12 w-full items-center justify-center rounded-lg border-none bg-gray-950 px-4 text-sm font-black text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-200"
-            >
-              {pending ? "처리 중" : "이메일로 로그인"}
-            </button>
-          </form>
-        )}
-
         {visibleProviders.length > 0 && (
-          <>
-            {showEmailForm && (
-              <div className="my-4 flex items-center gap-3">
-                <span className="h-px flex-1 bg-gray-200 dark:bg-gray-800" />
-                <span className="text-[11px] font-black uppercase text-gray-400">or</span>
-                <span className="h-px flex-1 bg-gray-200 dark:bg-gray-800" />
-              </div>
-            )}
-
-            <div className={showEmailForm ? "space-y-2" : "space-y-2 pt-1"}>
-              {visibleProviders.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.provider}
-                    onClick={() => handleProviderClick(item.provider)}
-                    disabled={pending}
-                    className={`flex h-12 w-full items-center justify-center gap-3 rounded-lg border px-4 text-sm font-black transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60 ${item.tone} dark:border-gray-700`}
-                  >
-                    <Icon />
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
-          </>
+          <div className="space-y-2 pt-1">
+            {visibleProviders.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.provider}
+                  onClick={() => handleProviderClick(item.provider)}
+                  disabled={pending}
+                  className={`flex h-12 w-full items-center justify-center gap-3 rounded-lg border px-4 text-sm font-black transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60 ${item.tone} dark:border-gray-700`}
+                >
+                  <Icon />
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
         )}
 
         {(localError || error) && (

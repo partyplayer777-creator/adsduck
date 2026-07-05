@@ -343,66 +343,6 @@ export function useAuthSession() {
     return false;
   }, []);
 
-  const loginWithEmail = useCallback(async (email, password, mode = "login", options = {}) => {
-    setAuthError("");
-
-    const normalizedEmail = String(email || "").trim();
-    if (!normalizedEmail || !password) {
-      setAuthError("이메일과 비밀번호를 입력하세요.");
-      return false;
-    }
-
-    if (mode === "signup" && !options.marketingConsent) {
-      setAuthError("필수 동의 항목을 체크해야 회원가입할 수 있습니다.");
-      return false;
-    }
-
-    if (!supabase) {
-      setAuthError("실제 로그인을 사용하려면 VITE_SUPABASE_URL과 VITE_SUPABASE_ANON_KEY를 설정해야 합니다.");
-      return false;
-    }
-
-    if (mode === "signup") {
-      const { data, error } = await supabase.auth.signUp({
-        email: normalizedEmail,
-        password,
-        options: {
-          emailRedirectTo: makeReturnTo(),
-          data: {
-            display_name: normalizedEmail.split("@")[0],
-            marketing_consent: !!options.marketingConsent,
-          },
-        },
-      });
-
-      if (error) {
-        setAuthError(error.message);
-        return false;
-      }
-
-      if (!data?.session) {
-        setAuthError("가입 확인 이메일을 보냈습니다. 메일 확인 후 로그인하세요.");
-        return false;
-      }
-
-      setAuthError("");
-      return true;
-    }
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email: normalizedEmail,
-      password,
-    });
-
-    if (error) {
-      setAuthError(error.message);
-      return false;
-    }
-
-    setAuthError("");
-    return true;
-  }, []);
-
   const logout = useCallback(async () => {
     if (supabase) {
       const { error } = await supabase.auth.signOut();
@@ -423,7 +363,6 @@ export function useAuthSession() {
     authError,
     enabledProviders,
     loginWithProvider,
-    loginWithEmail,
     logout,
   };
 }
