@@ -46,6 +46,28 @@ http://localhost:5173/
 https://your-adsduck-domain.example/
 ```
 
+AdsDuck production values:
+
+```text
+Site URL: https://adsduck.com
+Redirect URLs:
+https://adsduck.com/
+https://adsduck-production.up.railway.app/
+http://localhost:5173/
+```
+
+Social provider callback URL for external developer consoles:
+
+```text
+https://drxggwlbodzkzroqeyum.supabase.co/auth/v1/callback
+```
+
+Provider notes:
+
+- Google and Kakao use the built-in Supabase providers.
+- Naver must be configured as a custom OAuth provider with the identifier `custom:naver`.
+- The UI displays social buttons only when the corresponding Supabase provider is enabled.
+
 ## API Env
 
 Use `server/.env.example` as the API variable checklist. The important Supabase auth value is:

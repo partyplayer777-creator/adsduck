@@ -4,6 +4,29 @@ import { supabase } from "../lib/supabaseClient";
 
 const AUTH_STORAGE_KEY = "adsduck-auth-session";
 const PENDING_SIGNUP_KEY = "adsduck-auth-pending-signup";
+const SOCIAL_PROVIDERS = [
+  { id: "google", oauthProvider: "google", settingKeys: ["google"] },
+  { id: "kakao", oauthProvider: "kakao", settingKeys: ["kakao"] },
+  { id: "naver", oauthProvider: "custom:naver", settingKeys: ["custom:naver", "naver"] },
+];
+const SOCIAL_PROVIDER_IDS = SOCIAL_PROVIDERS.map((provider) => provider.id);
+
+function normalizeProviderId(provider) {
+  if (provider === "custom:naver") return "naver";
+  return SOCIAL_PROVIDER_IDS.includes(provider) ? provider : "google";
+}
+
+function resolveOAuthProvider(provider) {
+  const providerId = normalizeProviderId(provider);
+  return SOCIAL_PROVIDERS.find((item) => item.id === providerId)?.oauthProvider || "google";
+}
+
+function resolveEnabledProviders(settings) {
+  const external = settings?.external || {};
+  return SOCIAL_PROVIDERS
+    .filter((provider) => provider.settingKeys.some((key) => !!external[key]))
+    .map((provider) => provider.id);
+}
 
 function readJson(key) {
   try {
@@ -99,7 +122,7 @@ function normalizeSupabaseSession(nextSession) {
 }
 
 function buildAuthorizeUrl(provider, mode, options = {}) {
-  const safeProvider = ["google", "kakao", "naver"].includes(provider) ? provider : "authorize";
+  const safeProvider = SOCIAL_PROVIDER_IDS.includes(provider) ? provider : "authorize";
   const url = new URL(`/auth/${safeProvider}`, `${appConfig.authBaseUrl}/`);
   url.searchParams.set("client", appConfig.authClientId);
   url.searchParams.set("returnTo", makeReturnTo());
@@ -161,7 +184,7 @@ export function useAuthSession() {
   const [session, setSession] = useState(() => (supabase ? null : readStoredSession()));
   const [authError, setAuthError] = useState("");
   const [enabledProviders, setEnabledProviders] = useState(() => (
-    supabase ? [] : ["google", "kakao", "naver"]
+    supabase ? [] : SOCIAL_PROVIDER_IDS
   ));
 
   const persistSession = useCallback((nextSession) => {
@@ -231,9 +254,7 @@ export function useAuthSession() {
       .then((response) => (response.ok ? response.json() : null))
       .then((settings) => {
         if (ignore || !settings?.external) return;
-        setEnabledProviders(
-          ["google", "kakao", "naver"].filter((provider) => !!settings.external[provider])
-        );
+        setEnabledProviders(resolveEnabledProviders(settings));
       })
       .catch(() => {
         if (!ignore) setEnabledProviders([]);
@@ -283,7 +304,7 @@ export function useAuthSession() {
       return false;
     }
 
-    const safeProvider = ["google", "kakao", "naver"].includes(provider) ? provider : "google";
+    const safeProvider = normalizeProviderId(provider);
 
     if (supabase) {
       if (mode === "signup") {
@@ -294,7 +315,7 @@ export function useAuthSession() {
       }
 
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: safeProvider,
+        provider: resolveOAuthProvider(safeProvider),
         options: {
           redirectTo: makeReturnTo(),
           queryParams: safeProvider === "google" ? { prompt: "select_account" } : undefined,
