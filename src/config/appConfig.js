@@ -1,5 +1,5 @@
 function trimTrailingSlash(value) {
-  return String(value || "").trim().replace(/\/$/, "");
+  return String(value || "").trim().replace(/\\r|\\n/g, "").replace(/\/+$/, "");
 }
 
 export const appConfig = {
