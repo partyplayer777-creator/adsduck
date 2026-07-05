@@ -2,6 +2,7 @@ import { sendError, sendJson } from "./_supabase.js";
 import { getAuthPayload, getLeaderboard, joinContest, submitEntry } from "./contests/_shared.js";
 
 const VALID_PROTOCOLS = new Set(["https:", "http:"]);
+const YOUTUBE_ONLY_CONTEST_IDS = new Set(["9"]);
 
 function parsePath(req) {
   return String(req.query?.path || "").split("/").filter(Boolean);
@@ -25,6 +26,30 @@ function validateSnsUrl(snsUrl) {
     return false;
   }
   return VALID_PROTOCOLS.has(parsedUrl.protocol);
+}
+
+function isYouTubeOnlyContestId(contestId) {
+  return YOUTUBE_ONLY_CONTEST_IDS.has(String(contestId));
+}
+
+function isYouTubeUrl(snsUrl) {
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(snsUrl);
+  } catch {
+    return false;
+  }
+
+  if (!VALID_PROTOCOLS.has(parsedUrl.protocol)) return false;
+
+  const host = parsedUrl.hostname.replace(/^www\./, "").toLowerCase();
+  return (
+    host === "youtu.be" ||
+    host === "youtube.com" ||
+    host.endsWith(".youtube.com") ||
+    host === "youtube-nocookie.com" ||
+    host.endsWith(".youtube-nocookie.com")
+  );
 }
 
 async function handleLeaderboard(req, res, contestId) {
@@ -73,11 +98,17 @@ async function handleEntry(req, res, contestId) {
     return;
   }
 
+  const youtubeOnly = isYouTubeOnlyContestId(contestId);
+  if (youtubeOnly && (platform !== "youtube" || !isYouTubeUrl(snsUrl))) {
+    sendJson(res, 400, { error: "This contest only accepts YouTube links." });
+    return;
+  }
+
   const authPayload = await getAuthPayload(req);
   const entry = await submitEntry({
     contestId,
     authPayload,
-    payload: { platform, snsUrl, title, profile },
+    payload: { platform: youtubeOnly ? "youtube" : platform, snsUrl, title, profile },
   });
 
   sendJson(res, 200, { ok: true, entry, created: entry.created });

@@ -1,13 +1,38 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { joinContest, submitContestEntry } from "../api/adsduckApi";
 import { POINT_RULES } from "../hooks/usePointWallet";
 
+const YOUTUBE_PLATFORM = { value: "youtube", label: "YouTube" };
+const YOUTUBE_ONLY_CONTEST_IDS = new Set([9]);
+
 const PLATFORMS = [
   { value: "instagram", label: "Instagram" },
-  { value: "youtube", label: "YouTube" },
+  YOUTUBE_PLATFORM,
   { value: "tiktok", label: "TikTok" },
   { value: "blog", label: "Blog" },
 ];
+
+function isYouTubeOnlyContest(contest) {
+  return YOUTUBE_ONLY_CONTEST_IDS.has(Number(contest?.id));
+}
+
+function isYouTubeUrl(snsUrl) {
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(snsUrl);
+  } catch {
+    return false;
+  }
+
+  const host = parsedUrl.hostname.replace(/^www\./, "").toLowerCase();
+  return (
+    host === "youtu.be" ||
+    host === "youtube.com" ||
+    host.endsWith(".youtube.com") ||
+    host === "youtube-nocookie.com" ||
+    host.endsWith(".youtube-nocookie.com")
+  );
+}
 
 export default function EntrySubmitDialog({ open, contest, authSession, pointAccount, onClose, onSubmitted, onToast }) {
   const [platform, setPlatform] = useState("instagram");
@@ -15,6 +40,12 @@ export default function EntrySubmitDialog({ open, contest, authSession, pointAcc
   const [snsUrl, setSnsUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const youtubeOnly = isYouTubeOnlyContest(contest);
+  const platformOptions = youtubeOnly ? [YOUTUBE_PLATFORM] : PLATFORMS;
+
+  useEffect(() => {
+    if (open && youtubeOnly) setPlatform(YOUTUBE_PLATFORM.value);
+  }, [open, youtubeOnly]);
 
   if (!open) return null;
 
@@ -24,11 +55,19 @@ export default function EntrySubmitDialog({ open, contest, authSession, pointAcc
     setError("");
 
     try {
+      if (youtubeOnly && !isYouTubeUrl(snsUrl)) {
+        throw new Error("불멍 공모전은 YouTube 링크만 제출할 수 있습니다.");
+      }
+
       if ((pointAccount?.wallet?.balance || 0) < POINT_RULES.contestEntryCost) {
         throw new Error(`공모전 참가에는 ${POINT_RULES.contestEntryCost.toLocaleString()}포인트가 필요합니다.`);
       }
       await joinContest(contest.id, authSession);
-      await submitContestEntry(contest.id, { platform, title, snsUrl }, authSession);
+      await submitContestEntry(
+        contest.id,
+        { platform: youtubeOnly ? YOUTUBE_PLATFORM.value : platform, title, snsUrl },
+        authSession
+      );
       const spendResult = pointAccount?.spendPoints(POINT_RULES.contestEntryCost, "공모전 참가");
       if (!spendResult?.ok) {
         throw new Error(spendResult?.error || "참가 포인트 결제에 실패했습니다.");
@@ -91,9 +130,10 @@ export default function EntrySubmitDialog({ open, contest, authSession, pointAcc
             <select
               value={platform}
               onChange={(event) => setPlatform(event.target.value)}
+              disabled={youtubeOnly}
               className="w-full px-3 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
             >
-              {PLATFORMS.map((item) => (
+              {platformOptions.map((item) => (
                 <option key={item.value} value={item.value}>{item.label}</option>
               ))}
             </select>
@@ -118,7 +158,7 @@ export default function EntrySubmitDialog({ open, contest, authSession, pointAcc
             <input
               value={snsUrl}
               onChange={(event) => setSnsUrl(event.target.value)}
-              placeholder="https://..."
+              placeholder={youtubeOnly ? "https://www.youtube.com/watch?v=..." : "https://..."}
               required
               type="url"
               className="w-full px-3 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400"

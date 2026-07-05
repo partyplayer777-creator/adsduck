@@ -43,11 +43,36 @@ if (missing.length > 0) {
 }
 
 const app = express();
+const YOUTUBE_ONLY_CONTEST_IDS = new Set(["9"]);
 
 app.disable("x-powered-by");
 app.use(cors({ origin: config.webOrigin, credentials: true }));
 app.use(express.json({ limit: "64kb" }));
 app.use(optionalAuth);
+
+function isYouTubeOnlyContestId(contestId) {
+  return YOUTUBE_ONLY_CONTEST_IDS.has(String(contestId));
+}
+
+function isYouTubeUrl(snsUrl) {
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(snsUrl);
+  } catch {
+    return false;
+  }
+
+  if (!["https:", "http:"].includes(parsedUrl.protocol)) return false;
+
+  const host = parsedUrl.hostname.replace(/^www\./, "").toLowerCase();
+  return (
+    host === "youtu.be" ||
+    host === "youtube.com" ||
+    host.endsWith(".youtube.com") ||
+    host === "youtube-nocookie.com" ||
+    host.endsWith(".youtube-nocookie.com")
+  );
+}
 
 function requireLectureAdmin(req, res, next) {
   const expected = String(config.lectureAdminSecret || config.organizerPaymentCodeAdminSecret || "").trim();
@@ -389,10 +414,16 @@ app.post("/api/contests/:contestId/entries", requireAuth, async (req, res, next)
       return;
     }
 
+    const youtubeOnly = isYouTubeOnlyContestId(req.params.contestId);
+    if (youtubeOnly && (platform !== "youtube" || !isYouTubeUrl(snsUrl))) {
+      res.status(400).json({ error: "This contest only accepts YouTube links." });
+      return;
+    }
+
     const entry = await submitEntry({
       contestId: req.params.contestId,
       authPayload: req.auth,
-      payload: { platform, snsUrl, title, profile },
+      payload: { platform: youtubeOnly ? "youtube" : platform, snsUrl, title, profile },
     });
     res.json({ ok: true, entry });
   } catch (error) {
