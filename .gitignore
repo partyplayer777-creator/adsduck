@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 output/
+scripts/__pycache__/
 .env
 .env.*
 !.env.example
