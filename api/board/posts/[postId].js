@@ -12,7 +12,7 @@ export default async function handler(req, res) {
       return;
     }
 
-    const authPayload = requireAuth(req);
+    const authPayload = await requireAuth(req);
     const postId = String(req.query.postId || "");
     const payload = req.body || {};
     if (!postId || payload.id !== postId) {

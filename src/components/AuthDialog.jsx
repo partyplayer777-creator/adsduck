@@ -36,44 +36,83 @@ function NaverIcon() {
   );
 }
 
-export default function AuthDialog({ mode = "login", open, error, onClose, onProviderLogin }) {
+export default function AuthDialog({
+  mode = "login",
+  open,
+  error,
+  onClose,
+  onProviderLogin,
+  onEmailLogin,
+  enabledProviders = [],
+}) {
   const [marketingConsent, setMarketingConsent] = useState(false);
-  const [consentError, setConsentError] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [pending, setPending] = useState(false);
+  const [localError, setLocalError] = useState("");
   const isSignup = mode === "signup";
 
   if (!open) return null;
 
   const title = isSignup ? "회원가입" : "로그인";
+  const visibleProviders = PROVIDERS.filter((item) => enabledProviders.includes(item.provider));
   const subtitle = isSignup
-    ? "가입하면 첫 혜택 5,000P가 지급되고 참가 기록이 저장됩니다."
-    : "포인트와 공모전 참가 기록을 저장하려면 로그인하세요.";
+    ? "실제 계정으로 가입하고 공모전 참여 기록과 포인트를 저장하세요."
+    : "실제 계정으로 로그인해 공모전 참여 기록과 포인트를 불러오세요.";
 
-  const handleProviderClick = (provider) => {
+  const requireSignupConsent = () => {
     if (isSignup && !marketingConsent) {
-      setConsentError("필수 동의 항목을 체크해야 회원가입할 수 있습니다.");
+      setLocalError("필수 동의 항목을 체크해야 회원가입할 수 있습니다.");
+      return false;
+    }
+    return true;
+  };
+
+  const handleProviderClick = async (provider) => {
+    if (!requireSignupConsent()) return;
+    setPending(true);
+    const started = await onProviderLogin?.(provider, mode, { marketingConsent });
+    setPending(false);
+    if (started === false) return;
+    setLocalError("");
+  };
+
+  const handleEmailSubmit = async (event) => {
+    event.preventDefault();
+    if (!requireSignupConsent()) return;
+
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail || !password) {
+      setLocalError("이메일과 비밀번호를 입력하세요.");
       return;
     }
-    setConsentError("");
-    onProviderLogin(provider, mode, { marketingConsent });
+    if (password.length < 6) {
+      setLocalError("비밀번호는 6자 이상이어야 합니다.");
+      return;
+    }
+
+    setPending(true);
+    const started = await onEmailLogin?.(normalizedEmail, password, mode, { marketingConsent });
+    setPending(false);
+    if (started === false) return;
+
+    setLocalError("");
+    setPassword("");
+    onClose?.();
   };
 
   const handleClose = () => {
-    setMarketingConsent(false);
-    setConsentError("");
-    onClose();
+    setLocalError("");
+    setPassword("");
+    onClose?.();
   };
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center px-4">
-      <button
-        className="absolute inset-0 cursor-default border-none bg-gray-950/60"
-        onClick={handleClose}
-        aria-label="로그인 창 닫기"
-      />
-      <div className="relative w-full max-w-sm rounded-xl border border-gray-100 bg-white p-5 shadow-2xl dark:border-gray-800 dark:bg-gray-900">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-950/55 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-[420px] rounded-2xl bg-white p-6 shadow-2xl dark:bg-gray-900">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-black text-gray-950 dark:text-white">{title}</h2>
+            <h2 className="text-xl font-black text-gray-950 dark:text-white">{title}</h2>
             <p className="mt-1 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
               {subtitle}
             </p>
@@ -89,44 +128,81 @@ export default function AuthDialog({ mode = "login", open, error, onClose, onPro
           </button>
         </div>
 
-        <div className="space-y-2">
-          {isSignup && (
-            <label className="mb-3 flex cursor-pointer items-start gap-3 rounded-lg border border-amber-200 bg-amber-50/80 p-3 dark:border-amber-900/60 dark:bg-amber-900/20">
-              <input
-                type="checkbox"
-                checked={marketingConsent}
-                onChange={(event) => {
-                  setMarketingConsent(event.target.checked);
-                  if (event.target.checked) setConsentError("");
-                }}
-                className="mt-0.5 h-4 w-4 flex-shrink-0 accent-amber-500"
-                aria-required="true"
-              />
-              <span className="text-xs leading-relaxed text-gray-700 dark:text-gray-300">
-                <b className="font-black text-gray-950 dark:text-white">[필수]</b>{" "}
-                공모전이 업데이트되는 것을 연락받을 수 있습니다. 광고성 이벤트 연락 수신에 동의합니다.
-              </span>
-            </label>
-          )}
+        {isSignup && (
+          <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-lg border border-amber-200 bg-amber-50/80 p-3 dark:border-amber-900/60 dark:bg-amber-900/20">
+            <input
+              type="checkbox"
+              checked={marketingConsent}
+              onChange={(event) => {
+                setMarketingConsent(event.target.checked);
+                if (event.target.checked) setLocalError("");
+              }}
+              className="mt-0.5 h-4 w-4 flex-shrink-0 accent-amber-500"
+              aria-required="true"
+            />
+            <span className="text-xs leading-relaxed text-gray-700 dark:text-gray-300">
+              <b className="font-black text-gray-950 dark:text-white">[필수]</b>{" "}
+              공모전 업데이트와 광고/이벤트 안내 수신에 동의합니다.
+            </span>
+          </label>
+        )}
 
-          {PROVIDERS.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.provider}
-                onClick={() => handleProviderClick(item.provider)}
-                className={`flex h-12 w-full items-center justify-center gap-3 rounded-lg border px-4 text-sm font-black transition hover:brightness-95 ${item.tone} dark:border-gray-700`}
-              >
-                <Icon />
-                {item.label}
-              </button>
-            );
-          })}
-        </div>
+        <form className="space-y-3" onSubmit={handleEmailSubmit}>
+          <input
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="이메일"
+            autoComplete="email"
+            className="h-12 w-full rounded-lg border border-gray-200 bg-white px-4 text-sm font-bold text-gray-950 outline-none transition focus:border-amber-400 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
+          />
+          <input
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="비밀번호"
+            autoComplete={isSignup ? "new-password" : "current-password"}
+            className="h-12 w-full rounded-lg border border-gray-200 bg-white px-4 text-sm font-bold text-gray-950 outline-none transition focus:border-amber-400 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
+          />
+          <button
+            type="submit"
+            disabled={pending}
+            className="flex h-12 w-full items-center justify-center rounded-lg border-none bg-gray-950 px-4 text-sm font-black text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-200"
+          >
+            {pending ? "처리 중" : isSignup ? "이메일로 회원가입" : "이메일로 로그인"}
+          </button>
+        </form>
 
-        {(consentError || error) && (
+        {visibleProviders.length > 0 && (
+          <>
+            <div className="my-4 flex items-center gap-3">
+              <span className="h-px flex-1 bg-gray-200 dark:bg-gray-800" />
+              <span className="text-[11px] font-black uppercase text-gray-400">or</span>
+              <span className="h-px flex-1 bg-gray-200 dark:bg-gray-800" />
+            </div>
+
+            <div className="space-y-2">
+              {visibleProviders.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.provider}
+                    onClick={() => handleProviderClick(item.provider)}
+                    disabled={pending}
+                    className={`flex h-12 w-full items-center justify-center gap-3 rounded-lg border px-4 text-sm font-black transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60 ${item.tone} dark:border-gray-700`}
+                  >
+                    <Icon />
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {(localError || error) && (
           <p className="mt-4 text-xs font-bold text-red-600 dark:text-red-400">
-            {consentError || error}
+            {localError || error}
           </p>
         )}
       </div>

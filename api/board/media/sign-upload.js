@@ -38,7 +38,7 @@ export default async function handler(req, res) {
       return;
     }
 
-    const authPayload = requireAuth(req);
+    const authPayload = await requireAuth(req);
     const mime = String(req.body?.mime || "").toLowerCase();
     const size = Number(req.body?.size || 0);
     const mediaType = mime.startsWith("video/") ? "video" : mime.startsWith("image/") ? "image" : "";

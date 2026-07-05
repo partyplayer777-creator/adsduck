@@ -2,41 +2,66 @@
 
 ## Flow
 
-1. User signs up or logs in through the existing OAuth auth server.
-2. Frontend stores the auth server access token.
-3. User opens a contest detail page.
-4. User joins the contest and submits the uploaded SNS video URL.
-5. API stores participation and entry rows in Supabase.
-6. SNS metric sync worker updates likes and views.
-7. Contest detail page reads the leaderboard over SSE and displays live rank, URL, likes, and views.
+1. User signs up or logs in with Supabase Auth OAuth.
+2. Frontend keeps the Supabase session and sends the Supabase access token as `Authorization: Bearer <token>`.
+3. API verifies the JWT with the Supabase JWT secret and normalizes the user profile from token metadata.
+4. User opens a contest detail page.
+5. User joins the contest and submits the uploaded SNS video URL.
+6. API stores participation and entry rows in Supabase.
+7. SNS metric sync worker updates likes and views.
+8. Contest detail page reads the leaderboard over SSE and displays live rank, URL, likes, and views.
 
 ## Local Services
 
-- Auth module: `F:\work\auth-server`
-- Payment module: `F:\work\payment-kit-server`
 - AdsDuck API: `server/`
+- Payment module: `F:\work\payment-kit-server`
 - Database schema: `supabase/schema.sql`
+- Optional legacy auth module: `F:\work\auth-server`
 
 ## Frontend Env
 
 ```env
 VITE_ADSDUCK_API_BASE_URL=http://localhost:4100
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-public-anon-key
+```
+
+The frontend must only receive the Supabase anon key. Never expose the service-role key in any `VITE_` variable.
+
+The legacy OAuth server is still supported when Supabase frontend env is not configured:
+
+```env
 VITE_ADSDUCK_AUTH_BASE_URL=http://localhost:3000
 VITE_ADSDUCK_AUTH_CLIENT_ID=adsduck
 ```
 
-If API/auth env vars are empty, the frontend uses mock login and mock leaderboard data so the UI can still be reviewed.
+If API env vars are empty in local development, leaderboard and entry submission can still use mock data. Login no longer creates a demo user; missing auth env now shows a configuration error.
 
-## Railway API Env
+## Supabase Auth Setup
 
-Use `server/.env.example` as the Railway variable checklist. The important shared value is:
+In Supabase, enable the OAuth providers used by the UI and add the frontend origin/redirect URL, for example:
+
+```text
+http://localhost:5173/
+https://your-adsduck-domain.example/
+```
+
+## API Env
+
+Use `server/.env.example` as the API variable checklist. The important Supabase auth value is:
+
+```env
+SUPABASE_JWT_SECRET=<Supabase Auth JWT secret>
+```
+
+If the optional legacy auth server is used, keep:
 
 ```env
 AUTH_ACCESS_TOKEN_SECRET=<same value as auth-server ACCESS_TOKEN_SECRET or SESSION_SECRET>
 AUTH_CLIENT_ID=adsduck
 ```
 
-The auth server must include an `adsduck` client in `CLIENTS_JSON` whose origin is the deployed AdsDuck frontend origin.
+The API accepts both Supabase Auth access tokens and the legacy `type=access` tokens.
 
 ## Payment
 
@@ -65,4 +90,3 @@ X-Sync-Secret: <METRICS_SYNC_SECRET>
 ```
 
 That worker can use YouTube Data API, Instagram Graph API, TikTok API, or manual/admin ingestion depending on channel permissions.
-

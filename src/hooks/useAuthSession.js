@@ -1,30 +1,101 @@
 import { useCallback, useEffect, useState } from "react";
 import { appConfig } from "../config/appConfig";
+import { supabase } from "../lib/supabaseClient";
 
 const AUTH_STORAGE_KEY = "adsduck-auth-session";
+const PENDING_SIGNUP_KEY = "adsduck-auth-pending-signup";
 
-function readStoredSession() {
+function readJson(key) {
   try {
-    return JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY) || "null");
+    return JSON.parse(localStorage.getItem(key) || "null");
   } catch {
     return null;
   }
 }
 
-function writeStoredSession(session) {
+function writeJson(key, value) {
   try {
-    if (session) {
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+    if (value) {
+      localStorage.setItem(key, JSON.stringify(value));
     } else {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
+      localStorage.removeItem(key);
     }
   } catch {
     // Auth state can still live in memory if storage is blocked.
   }
 }
 
+function isMockSession(session) {
+  return (
+    session?.mode === "mock" ||
+    session?.user?.id === "demo-user" ||
+    String(session?.accessToken || "").startsWith("demo-")
+  );
+}
+
+function readStoredSession() {
+  const session = readJson(AUTH_STORAGE_KEY);
+  if (isMockSession(session)) {
+    writeJson(AUTH_STORAGE_KEY, null);
+    return null;
+  }
+  return session;
+}
+
 function makeReturnTo() {
   return `${window.location.origin}${import.meta.env.BASE_URL}`;
+}
+
+function pickFirst(...values) {
+  return values.find((value) => typeof value === "string" && value.trim())?.trim() || null;
+}
+
+function normalizeSupabaseUser(user) {
+  if (!user) return null;
+
+  const metadata = user.user_metadata || {};
+  const appMetadata = user.app_metadata || {};
+  const identityData = user.identities?.[0]?.identity_data || {};
+  const email = user.email || identityData.email || null;
+  const displayName =
+    pickFirst(
+      metadata.display_name,
+      metadata.full_name,
+      metadata.name,
+      identityData.full_name,
+      identityData.name,
+      email?.split("@")[0]
+    ) || "사용자";
+  const avatarUrl = pickFirst(
+    metadata.avatar_url,
+    metadata.picture,
+    identityData.avatar_url,
+    identityData.picture
+  );
+
+  return {
+    id: user.id,
+    display_name: displayName,
+    email,
+    profile_image: avatarUrl,
+    avatar_url: avatarUrl,
+    provider: appMetadata.provider || identityData.provider || null,
+    providers: appMetadata.providers || [],
+    marketing_consent: !!metadata.marketing_consent,
+  };
+}
+
+function normalizeSupabaseSession(nextSession) {
+  if (!nextSession?.access_token || !nextSession?.user) return null;
+
+  return {
+    accessToken: nextSession.access_token,
+    refreshToken: nextSession.refresh_token || null,
+    expiresAt: nextSession.expires_at ? nextSession.expires_at * 1000 : null,
+    user: normalizeSupabaseUser(nextSession.user),
+    isNewUser: false,
+    mode: "supabase",
+  };
 }
 
 function buildAuthorizeUrl(provider, mode, options = {}) {
@@ -59,21 +130,125 @@ async function exchangeAuthCode(code) {
     expiresAt: Date.now() + Number(data.expires_in || 0) * 1000,
     user: data.user,
     isNewUser: data.is_new_user,
+    mode: "legacy",
   };
 }
 
+async function applyPendingSignupMetadata(nextSession) {
+  if (!supabase || !nextSession?.user) return null;
+
+  const pending = readJson(PENDING_SIGNUP_KEY);
+  if (!pending) return null;
+  if (!pending.startedAt || Date.now() - Number(pending.startedAt) > 30 * 60 * 1000) {
+    writeJson(PENDING_SIGNUP_KEY, null);
+    return null;
+  }
+
+  const currentMetadata = nextSession.user.user_metadata || {};
+  const nextMetadata = {
+    ...currentMetadata,
+    marketing_consent: !!pending.marketingConsent,
+  };
+
+  const { data, error } = await supabase.auth.updateUser({ data: nextMetadata });
+  if (error) throw error;
+
+  writeJson(PENDING_SIGNUP_KEY, null);
+  return data?.user || null;
+}
+
 export function useAuthSession() {
-  const [session, setSession] = useState(readStoredSession);
+  const [session, setSession] = useState(() => (supabase ? null : readStoredSession()));
   const [authError, setAuthError] = useState("");
+  const [enabledProviders, setEnabledProviders] = useState(() => (
+    supabase ? [] : ["google", "kakao", "naver"]
+  ));
 
   const persistSession = useCallback((nextSession) => {
     setSession(nextSession);
-    writeStoredSession(nextSession);
+
+    if (!supabase || nextSession?.mode === "legacy") {
+      writeJson(AUTH_STORAGE_KEY, nextSession);
+      return;
+    }
+
+    writeJson(AUTH_STORAGE_KEY, null);
   }, []);
 
   useEffect(() => {
+    if (!supabase) return undefined;
+
+    let ignore = false;
+
+    const syncSession = (nextSupabaseSession) => {
+      if (ignore) return;
+
+      const normalized = normalizeSupabaseSession(nextSupabaseSession);
+      persistSession(normalized);
+
+      if (!nextSupabaseSession?.user) return;
+
+      applyPendingSignupMetadata(nextSupabaseSession)
+        .then((updatedUser) => {
+          if (ignore || !updatedUser) return;
+          persistSession(normalizeSupabaseSession({ ...nextSupabaseSession, user: updatedUser }));
+        })
+        .catch((error) => {
+          if (!ignore) setAuthError(error.message || "회원 정보를 저장하지 못했습니다.");
+        });
+    };
+
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (ignore) return;
+      if (error) {
+        setAuthError(error.message);
+        return;
+      }
+      syncSession(data?.session || null);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSupabaseSession) => {
+      syncSession(nextSupabaseSession);
+      if (nextSupabaseSession?.user) setAuthError("");
+    });
+
+    return () => {
+      ignore = true;
+      listener?.subscription?.unsubscribe();
+    };
+  }, [persistSession]);
+
+  useEffect(() => {
+    if (!supabase || !appConfig.supabaseUrl || !appConfig.supabaseAnonKey) return undefined;
+
+    let ignore = false;
+    fetch(`${appConfig.supabaseUrl}/auth/v1/settings`, {
+      headers: {
+        apikey: appConfig.supabaseAnonKey,
+        Authorization: `Bearer ${appConfig.supabaseAnonKey}`,
+      },
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((settings) => {
+        if (ignore || !settings?.external) return;
+        setEnabledProviders(
+          ["google", "kakao", "naver"].filter((provider) => !!settings.external[provider])
+        );
+      })
+      .catch(() => {
+        if (!ignore) setEnabledProviders([]);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!appConfig.authBaseUrl) return undefined;
+
     const handleMessage = async (event) => {
-      if (!appConfig.authBaseUrl || event.origin !== new URL(appConfig.authBaseUrl).origin) {
+      if (event.origin !== new URL(appConfig.authBaseUrl).origin) {
         return;
       }
 
@@ -100,7 +275,7 @@ export function useAuthSession() {
     return () => window.removeEventListener("message", handleMessage);
   }, [persistSession]);
 
-  const loginWithProvider = useCallback((provider = "google", mode = "login", options = {}) => {
+  const loginWithProvider = useCallback(async (provider = "google", mode = "login", options = {}) => {
     setAuthError("");
 
     if (mode === "signup" && !options.marketingConsent) {
@@ -108,35 +283,114 @@ export function useAuthSession() {
       return false;
     }
 
-    if (!appConfig.authBaseUrl) {
-      const displayName = mode === "signup" ? "new.creator" : "demo.creator";
-      persistSession({
-        accessToken: `demo-${Date.now()}`,
-        refreshToken: null,
-        expiresAt: Date.now() + 3600_000,
-        user: {
-          id: "demo-user",
-          display_name: displayName,
-          email: `${displayName}@adsduck.local`,
-          profile_image: null,
-          marketing_consent: !!options.marketingConsent,
+    const safeProvider = ["google", "kakao", "naver"].includes(provider) ? provider : "google";
+
+    if (supabase) {
+      if (mode === "signup") {
+        writeJson(PENDING_SIGNUP_KEY, {
+          marketingConsent: !!options.marketingConsent,
+          startedAt: Date.now(),
+        });
+      }
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: safeProvider,
+        options: {
+          redirectTo: makeReturnTo(),
+          queryParams: safeProvider === "google" ? { prompt: "select_account" } : undefined,
         },
-        isNewUser: mode === "signup",
-        marketingConsent: !!options.marketingConsent,
-        mode: "mock",
       });
+
+      if (error) {
+        setAuthError(error.message);
+        return false;
+      }
+
       return true;
     }
 
-    window.open(
-      buildAuthorizeUrl(provider, mode, options),
-      "adsduck-auth",
-      "popup,width=460,height=720"
-    );
-    return true;
-  }, [persistSession]);
+    if (appConfig.authBaseUrl) {
+      window.open(
+        buildAuthorizeUrl(safeProvider, mode, options),
+        "adsduck-auth",
+        "popup,width=460,height=720"
+      );
+      return true;
+    }
 
-  const logout = useCallback(() => {
+    setAuthError("실제 로그인을 사용하려면 VITE_SUPABASE_URL과 VITE_SUPABASE_ANON_KEY를 설정해야 합니다.");
+    return false;
+  }, []);
+
+  const loginWithEmail = useCallback(async (email, password, mode = "login", options = {}) => {
+    setAuthError("");
+
+    const normalizedEmail = String(email || "").trim();
+    if (!normalizedEmail || !password) {
+      setAuthError("이메일과 비밀번호를 입력하세요.");
+      return false;
+    }
+
+    if (mode === "signup" && !options.marketingConsent) {
+      setAuthError("필수 동의 항목을 체크해야 회원가입할 수 있습니다.");
+      return false;
+    }
+
+    if (!supabase) {
+      setAuthError("실제 로그인을 사용하려면 VITE_SUPABASE_URL과 VITE_SUPABASE_ANON_KEY를 설정해야 합니다.");
+      return false;
+    }
+
+    if (mode === "signup") {
+      const { data, error } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: {
+          emailRedirectTo: makeReturnTo(),
+          data: {
+            display_name: normalizedEmail.split("@")[0],
+            marketing_consent: !!options.marketingConsent,
+          },
+        },
+      });
+
+      if (error) {
+        setAuthError(error.message);
+        return false;
+      }
+
+      if (!data?.session) {
+        setAuthError("가입 확인 이메일을 보냈습니다. 메일 확인 후 로그인하세요.");
+        return false;
+      }
+
+      setAuthError("");
+      return true;
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: normalizedEmail,
+      password,
+    });
+
+    if (error) {
+      setAuthError(error.message);
+      return false;
+    }
+
+    setAuthError("");
+    return true;
+  }, []);
+
+  const logout = useCallback(async () => {
+    if (supabase) {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        setAuthError(error.message);
+        return;
+      }
+    }
+
     persistSession(null);
     setAuthError("");
   }, [persistSession]);
@@ -146,7 +400,9 @@ export function useAuthSession() {
     user: session?.user || null,
     isAuthenticated: !!session?.user,
     authError,
+    enabledProviders,
     loginWithProvider,
+    loginWithEmail,
     logout,
   };
 }

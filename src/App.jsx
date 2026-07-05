@@ -6,6 +6,7 @@ import ContestDetail from "./components/ContestDetail";
 import Board from "./components/Board";
 import Messages from "./components/Messages";
 import PointCharge from "./components/PointCharge";
+import LectureLetter from "./components/LectureLetter";
 import OrganizerHost from "./components/OrganizerHost";
 import Terms from "./components/Terms";
 import Footer from "./components/Footer";
@@ -31,6 +32,16 @@ function getInitialRoute() {
       termsSection: DEFAULT_TERMS_KEY,
       title: "게시판 — AdsDuck",
       historyState: { page: "board" },
+    };
+  }
+
+  if (params.get("lectures") === "1") {
+    return {
+      page: "lectures",
+      contest: null,
+      termsSection: DEFAULT_TERMS_KEY,
+      title: "AI강의레터 — AdsDuck",
+      historyState: { page: "lectures" },
     };
   }
 
@@ -168,6 +179,9 @@ export default function App() {
       } else if (state.page === "board") {
         setPage("board");
         setSelectedContest(null);
+      } else if (state.page === "lectures") {
+        setPage("lectures");
+        setSelectedContest(null);
       } else if (state.page === "organizer") {
         setPage("organizer");
         setSelectedContest(null);
@@ -225,6 +239,8 @@ export default function App() {
         nextUrl = `${window.location.pathname}?terms=${nextTermsSection}`;
       } else if (target === "board") {
         nextUrl = `${window.location.pathname}?board=1`;
+      } else if (target === "lectures") {
+        nextUrl = `${window.location.pathname}?lectures=1`;
       } else if (target === "organizer") {
         nextUrl = `${window.location.pathname}?organizer=1`;
       } else if (target === "messages") {
@@ -264,6 +280,8 @@ export default function App() {
         document.title = "이용약관 — AdsDuck";
       } else if (target === "board") {
         document.title = "게시판 — AdsDuck";
+      } else if (target === "lectures") {
+        document.title = "AI강의레터 — AdsDuck";
       } else if (target === "organizer") {
         document.title = "공모전 주최하기 — AdsDuck";
       } else if (target === "messages") {
@@ -348,6 +366,14 @@ export default function App() {
             onOpenPoints={() => handleNavigate("points")}
           />
         )}
+        {page === "lectures" && (
+          <LectureLetter
+            authSession={authSession.session}
+            onRequireLogin={setAuthDialogMode}
+            onToast={addToast}
+            onOpenPoints={() => handleNavigate("points")}
+          />
+        )}
         {page === "messages" && (
           <Messages
             authSession={authSession.session}
@@ -390,12 +416,21 @@ export default function App() {
         open={!!authDialogMode}
         mode={authDialogMode || "login"}
         error={authSession.authError}
+        enabledProviders={authSession.enabledProviders}
         onClose={() => setAuthDialogMode(null)}
-        onProviderLogin={(provider, mode, options) => {
-          const started = authSession.loginWithProvider(provider, mode, options);
+        onProviderLogin={async (provider, mode, options) => {
+          const started = await authSession.loginWithProvider(provider, mode, options);
           if (started !== false) {
             setAuthDialogMode(null);
           }
+          return started;
+        }}
+        onEmailLogin={async (email, password, mode, options) => {
+          const started = await authSession.loginWithEmail(email, password, mode, options);
+          if (started !== false) {
+            setAuthDialogMode(null);
+          }
+          return started;
         }}
       />
       <ScrollToTop />

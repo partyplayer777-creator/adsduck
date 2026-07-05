@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import logoSrc from "../assets/adsduck-logo-cropped.png";
 import logoWhiteSrc from "../assets/adsduck-logo-white.png";
 
@@ -64,6 +65,7 @@ export default function Header({ onNavigate, currentPage, darkMode, onToggleDark
     { key: "home", label: "공모전", icon: "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" },
     { key: "organizer", label: "주최하기", icon: "M12 8v4l3 2m6-2a9 9 0 1 1 -18 0 9 9 0 0 1 18 0Z" },
     { key: "board", label: "게시판", icon: "M8 10h8M8 14h5m-9 6h16a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2z" },
+    { key: "lectures", label: "AI강의레터", icon: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5s3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18s-3.332.477-4.5 1.253" },
     ...(isAuthenticated
       ? [
           { key: "messages", label: "쪽지함", icon: "M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10Z" },
@@ -223,13 +225,17 @@ export default function Header({ onNavigate, currentPage, darkMode, onToggleDark
       </div>
 
       {/* Mobile slide-over */}
-      {mobileOpen && (
+      {mobileOpen && typeof document !== "undefined" && createPortal(
         <>
           <div
-            className="fixed inset-0 bg-black/80 z-50 mobile-menu-overlay md:hidden"
+            className="fixed inset-0 z-[400] bg-white mobile-menu-overlay dark:bg-gray-900 md:hidden"
+            style={{ backgroundColor: darkMode ? "#111827" : "#ffffff" }}
             onClick={() => setMobileOpen(false)}
           />
-          <div className="fixed inset-0 z-50 bg-white shadow-xl mobile-menu-panel dark:bg-gray-900 md:hidden">
+          <div
+            className="fixed inset-0 z-[410] overflow-y-auto bg-white shadow-xl mobile-menu-panel dark:bg-gray-900 md:hidden"
+            style={{ backgroundColor: darkMode ? "#111827" : "#ffffff", minHeight: "100dvh" }}
+          >
             <div className="flex items-center justify-between border-b border-gray-100 p-4 dark:border-gray-800">
               <span className="text-base font-bold text-gray-900 dark:text-white">메뉴</span>
               <button
@@ -302,7 +308,8 @@ export default function Header({ onNavigate, currentPage, darkMode, onToggleDark
               ))}
             </nav>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </header>
   );

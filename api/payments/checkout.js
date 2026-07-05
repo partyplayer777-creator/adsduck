@@ -34,7 +34,7 @@ export default async function handler(req, res) {
       return;
     }
 
-    const authPayload = requireAuth(req);
+    const authPayload = await requireAuth(req);
     const body = req.body || {};
     const kind = body.kind || body.type || "product";
     const origin = getRequestOrigin(req);

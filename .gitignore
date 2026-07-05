@@ -30,6 +30,7 @@ dist-ssr
 
 .vercel
 .vercel-jins-backup/
+supabase/.temp/
 *.stackdump
 390x844-*.png
 .adsduck-api-test*.log

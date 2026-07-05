@@ -16,7 +16,7 @@ function makeError(status, message) {
   return error;
 }
 
-function optionalAuth(req) {
+async function optionalAuth(req) {
   const header = req.headers.authorization || "";
   const [scheme, token] = header.split(" ");
   if (scheme !== "Bearer" || !token) return null;
@@ -46,7 +46,7 @@ export default async function handler(req, res) {
     const startUrl = String(process.env.PASS_VERIFICATION_START_URL || "").trim();
     if (!startUrl) throw makeError(501, "PASS_VERIFICATION_START_URL is not configured.");
 
-    const user = optionalAuth(req);
+    const user = await optionalAuth(req);
     const response = await fetch(startUrl, {
       method: "POST",
       headers: {

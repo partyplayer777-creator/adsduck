@@ -10,6 +10,31 @@ import {
   createOrganizerPaymentCode,
   getOrganizerPaymentCode,
 } from "./services/organizerPayments.mjs";
+import {
+  chargePoints,
+  createLectureAdminPost,
+  createLectureReport,
+  getLectureAuthorEarnings,
+  getAuthorSettlements,
+  getLectureAdminSummary,
+  getLectureMemberships,
+  getLecturePost,
+  getPointWallet,
+  listLecturePosts,
+  makeIdempotencyKey,
+  purchaseLectureMembership,
+  readLecturePost,
+  recordPointTransaction,
+  refundLectureTransaction,
+  requestAuthorSettlement,
+  resultStatus,
+  settleAuthorRequest,
+  subscribeLecturePost,
+  updateLectureAccess,
+  updateLectureAdminPost,
+  updateLectureAuthorPermission,
+  updateLectureReport,
+} from "./services/lectureLetters.mjs";
 import { startPassOrganizerVerification, verifyBusinessOrganizer } from "./services/organizerVerification.mjs";
 import { getLeaderboard, joinContest, submitEntry } from "./services/leaderboard.mjs";
 
@@ -24,6 +49,16 @@ app.disable("x-powered-by");
 app.use(cors({ origin: config.webOrigin, credentials: true }));
 app.use(express.json({ limit: "64kb" }));
 app.use(optionalAuth);
+
+function requireLectureAdmin(req, res, next) {
+  const expected = String(config.lectureAdminSecret || config.organizerPaymentCodeAdminSecret || "").trim();
+  const presented = String(req.headers["x-lecture-admin-secret"] || req.headers["x-admin-secret"] || "").trim();
+  if (!expected || presented !== expected) {
+    res.status(403).json({ error: "Lecture admin authorization required." });
+    return;
+  }
+  next();
+}
 
 app.get("/health/live", (_req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() });
@@ -40,6 +75,253 @@ app.get("/health/ready", async (_req, res) => {
 
 app.get("/api/me", requireAuth, async (req, res) => {
   res.json({ user: { id: req.auth.sub, audience: req.auth.aud } });
+});
+
+app.get("/api/points/wallet", requireAuth, async (req, res, next) => {
+  try {
+    res.json(await getPointWallet(req.auth));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/points/charge", requireAuth, async (req, res, next) => {
+  try {
+    const amount = Math.floor(Number(req.body?.amount || 0));
+    if (!Number.isFinite(amount) || amount < 1000) {
+      res.status(400).json({ error: "Charge amount must be at least 1,000 points." });
+      return;
+    }
+
+    const result = await chargePoints(req.auth, amount, makeIdempotencyKey(req, `point-charge-${amount}`));
+    res.status(resultStatus(result)).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/points/transaction", requireAuth, async (req, res, next) => {
+  try {
+    const amount = Math.trunc(Number(req.body?.amount || 0));
+    if (!Number.isFinite(amount) || amount === 0) {
+      res.status(400).json({ error: "Point transaction amount must not be zero." });
+      return;
+    }
+
+    const type = String(req.body?.type || "adjustment").replace("virtue-spend", "virtue_spend");
+    const result = await recordPointTransaction(
+      req.auth,
+      req.body,
+      makeIdempotencyKey(req, `point-${type}-${Math.abs(amount)}`)
+    );
+    res.status(resultStatus(result)).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/lecture/posts", async (req, res, next) => {
+  try {
+    res.json(await listLecturePosts(req.auth));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/lecture/posts/:postId", async (req, res, next) => {
+  try {
+    res.json(await getLecturePost(req.params.postId, req.auth));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/lecture/posts/:postId/read", requireAuth, async (req, res, next) => {
+  try {
+    const result = await readLecturePost(
+      req.params.postId,
+      req.auth,
+      makeIdempotencyKey(req, `lecture-read-${req.params.postId}`)
+    );
+    res.status(resultStatus(result)).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/lecture/posts/:postId/subscribe", requireAuth, async (req, res, next) => {
+  try {
+    const result = await subscribeLecturePost(
+      req.params.postId,
+      req.auth,
+      makeIdempotencyKey(req, `lecture-subscribe-${req.params.postId}`)
+    );
+    res.status(resultStatus(result)).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/lecture/memberships", requireAuth, async (req, res, next) => {
+  try {
+    res.json(await getLectureMemberships(req.auth));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/lecture/memberships", requireAuth, async (req, res, next) => {
+  try {
+    const planKey = String(req.body?.planKey || "").trim();
+    const result = await purchaseLectureMembership(
+      req.auth,
+      planKey,
+      makeIdempotencyKey(req, `lecture-membership-${planKey}`)
+    );
+    res.status(resultStatus(result)).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/lecture/author/earnings", requireAuth, async (req, res, next) => {
+  try {
+    res.json(await getLectureAuthorEarnings(req.auth));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/lecture/author/settlements", requireAuth, async (req, res, next) => {
+  try {
+    res.json(await getAuthorSettlements(req.auth));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/lecture/author/settlements", requireAuth, async (req, res, next) => {
+  try {
+    const result = await requestAuthorSettlement(req.auth, req.body?.note);
+    res.status(resultStatus(result)).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/lecture/reports", requireAuth, async (req, res, next) => {
+  try {
+    res.status(201).json(await createLectureReport(req.auth, req.body));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/lecture/admin/summary", requireLectureAdmin, async (_req, res, next) => {
+  try {
+    res.json(await getLectureAdminSummary());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/lecture/admin/posts", requireLectureAdmin, async (req, res, next) => {
+  try {
+    res.status(201).json(await createLectureAdminPost(req.body));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.put("/api/lecture/admin/posts/:postId", requireLectureAdmin, async (req, res, next) => {
+  try {
+    res.json(await updateLectureAdminPost(req.params.postId, req.body));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/lecture/admin/posts/:postId", requireLectureAdmin, async (req, res, next) => {
+  try {
+    res.json(await updateLectureAdminPost(req.params.postId, req.body));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/lecture/admin/posts/:postId", requireLectureAdmin, async (req, res, next) => {
+  try {
+    res.json(await updateLectureAdminPost(req.params.postId, {}, { deleted: true }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/lecture/admin/refund", requireLectureAdmin, async (req, res, next) => {
+  try {
+    const result = await refundLectureTransaction({
+      actorUserId: req.body?.actorUserId || "lecture-admin",
+      transactionId: req.body?.transactionId || req.body?.transaction_id,
+      reason: req.body?.reason || "",
+      revokeAccess: req.body?.revokeAccess !== false,
+    });
+    res.status(resultStatus(result)).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/lecture/admin/access", requireLectureAdmin, async (req, res, next) => {
+  try {
+    const result = await updateLectureAccess({
+      actorUserId: req.body?.actorUserId || "lecture-admin",
+      userId: req.body?.userId || req.body?.user_id,
+      postId: req.body?.postId || req.body?.post_id,
+      readCount: req.body?.readCount ?? req.body?.read_count ?? null,
+      isSubscribed: req.body?.isSubscribed ?? req.body?.is_subscribed ?? null,
+      unlock: !!req.body?.unlock,
+    });
+    res.status(resultStatus(result)).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/lecture/admin/authors", requireLectureAdmin, async (req, res, next) => {
+  try {
+    res.json(await updateLectureAuthorPermission(req.body));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/lecture/admin/reports/:reportId", requireLectureAdmin, async (req, res, next) => {
+  try {
+    res.json(await updateLectureReport(req.params.reportId, req.body));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.put("/api/lecture/admin/reports/:reportId", requireLectureAdmin, async (req, res, next) => {
+  try {
+    res.json(await updateLectureReport(req.params.reportId, req.body));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/lecture/admin/settlements/:requestId", requireLectureAdmin, async (req, res, next) => {
+  try {
+    const result = await settleAuthorRequest({
+      actorUserId: req.body?.actorUserId || "lecture-admin",
+      requestId: req.params.requestId,
+      adminNote: req.body?.adminNote || req.body?.admin_note || "",
+    });
+    res.status(resultStatus(result)).json(result);
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.get("/api/contests/:contestId/leaderboard", async (req, res, next) => {

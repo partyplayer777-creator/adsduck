@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { getPointWallet, recordPointTransaction } from "../api/adsduckApi";
 import { STORAGE_KEYS, getStoredItem, setStoredItem } from "../storageKeys";
 
 export const POINT_RULES = {
@@ -112,11 +113,84 @@ function makePenaltyWallet(startingBalance = 0) {
   };
 }
 
+function normalizeServerTransaction(row) {
+  return {
+    id: row.id,
+    type: row.type,
+    amount: Number(row.amount || 0),
+    label: row.description || row.type || "Point transaction",
+    createdAt: row.createdAt || row.created_at || new Date().toISOString(),
+  };
+}
+
+function toServerPointType(type) {
+  if (type === "virtue-spend") return "virtue_spend";
+  if (["earn", "spend", "bonus", "penalty", "virtue_spend", "charge"].includes(type)) return type;
+  return "adjustment";
+}
+
+function makePointIdempotencyKey(type, amount) {
+  return `point-${type}-${Math.abs(Number(amount) || 0)}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export function usePointWallet(session) {
   const [wallets, setWallets] = useState(readWallets);
   const userId = session?.user?.id || null;
 
-  const updateWallet = useCallback((updater) => {
+  const refreshServerWallet = useCallback(async () => {
+    if (!session || !userId) return null;
+    try {
+      const data = await getPointWallet(session);
+      if (!data?.wallet) return null;
+      setWallets((prev) => {
+        const current = prev[userId] || makeSignupWallet(session);
+        const nextWallet = {
+          ...current,
+          balance: Number(data.wallet.balance || 0),
+          transactions: (data.transactions || []).map(normalizeServerTransaction),
+        };
+        const next = { ...prev, [userId]: nextWallet };
+        setStoredItem(localStorage, STORAGE_KEYS.pointWallets, JSON.stringify(next));
+        return next;
+      });
+      return data.wallet;
+    } catch {
+      return null;
+    }
+  }, [session, userId]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void refreshServerWallet();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [refreshServerWallet]);
+
+  const syncPointTransaction = useCallback((transaction) => {
+    if (!session || !userId || !transaction?.amount) return;
+    void recordPointTransaction(transaction, session)
+      .then((data) => {
+        if (!data?.wallet) return;
+        setWallets((prev) => {
+          const current = prev[userId] || makeSignupWallet(session);
+          const nextWallet = {
+            ...current,
+            balance: Number(data.wallet.balance || 0),
+            transactions: data.transaction
+              ? [normalizeServerTransaction(data.transaction), ...(current.transactions || [])].slice(0, 30)
+              : current.transactions,
+          };
+          const next = { ...prev, [userId]: nextWallet };
+          setStoredItem(localStorage, STORAGE_KEYS.pointWallets, JSON.stringify(next));
+          return next;
+        });
+      })
+      .catch(() => {
+        void refreshServerWallet();
+      });
+  }, [refreshServerWallet, session, userId]);
+
+  const updateWallet = useCallback((updater, serverTransaction = null) => {
     if (!userId) return { ok: false, error: "로그인이 필요합니다." };
 
     let result = { ok: false, error: "처리하지 못했습니다." };
@@ -133,11 +207,16 @@ export function usePointWallet(session) {
       result = { ...updated, wallet: nextWallet };
       return next;
     });
+    if (result?.ok && serverTransaction) {
+      syncPointTransaction(serverTransaction);
+    }
     return result;
-  }, [session, userId]);
+  }, [session, syncPointTransaction, userId]);
 
   const addPoints = useCallback((amount, label, type = "earn") => {
     const value = Math.max(0, Number(amount) || 0);
+    if (!value) return { ok: false, error: "포인트 금액을 확인할 수 없습니다." };
+    const serverType = toServerPointType(type);
     return updateWallet((wallet) => ({
       ok: true,
       wallet: {
@@ -154,11 +233,21 @@ export function usePointWallet(session) {
           ...(wallet.transactions || []),
         ].slice(0, 30),
       },
-    }));
+    }), {
+      amount: value,
+      type: serverType,
+      description: label,
+      refType: "app_activity",
+      refId: `${serverType}-${Date.now()}`,
+      idempotencyKey: makePointIdempotencyKey(serverType, value),
+    });
   }, [updateWallet]);
 
   const spendPoints = useCallback((amount, label, options = {}) => {
     const value = Math.max(0, Number(amount) || 0);
+    if (!value) return { ok: false, error: "포인트 금액을 확인할 수 없습니다." };
+    const transactionType = options.type || "spend";
+    const serverType = toServerPointType(transactionType);
     return updateWallet((wallet) => {
       if (!options.allowNegative && wallet.balance < value) {
         return { ok: false, error: "포인트가 부족합니다." };
@@ -180,6 +269,13 @@ export function usePointWallet(session) {
           ].slice(0, 30),
         },
       };
+    }, {
+      amount: -value,
+      type: serverType,
+      description: label,
+      refType: options.refType || "app_activity",
+      refId: options.refId || `${serverType}-${Date.now()}`,
+      idempotencyKey: options.idempotencyKey || makePointIdempotencyKey(serverType, value),
     });
   }, [updateWallet]);
 
@@ -191,6 +287,11 @@ export function usePointWallet(session) {
 
   const checkAttendance = useCallback(() => {
     const date = todayKey();
+    const currentWallet = userId ? wallets[userId] || makeSignupWallet(session) : null;
+    const missedDays = diffDays(currentWallet?.lastAttendanceDate, date);
+    const keptStreak = missedDays === 1;
+    const nextDay = keptStreak ? (currentWallet?.attendanceDay || 0) + 1 : 1;
+    const bonus = getAttendanceBonus(nextDay);
     return updateWallet((wallet) => {
       if (wallet.lastAttendanceDate === date) {
         return { ok: false, error: "오늘 출석 보너스를 이미 받았습니다." };
@@ -222,14 +323,21 @@ export function usePointWallet(session) {
           ].slice(0, 30),
         },
       };
+    }, {
+      amount: bonus,
+      type: "bonus",
+      description: "출석 보너스",
+      refType: "attendance",
+      refId: date,
+      idempotencyKey: `attendance-${userId}-${date}`,
     });
-  }, [updateWallet]);
+  }, [session, updateWallet, userId, wallets]);
 
   const penalizeUser = useCallback((targetUserId, amount, fallbackBalance = 0) => {
     const value = Math.max(0, Number(amount) || 0);
-    if (!targetUserId || !value) return { ok: false, error: "벌점 대상을 확인할 수 없습니다." };
+    if (!targetUserId || !value) return { ok: false, error: "벌금 대상을 확인할 수 없습니다." };
 
-    let result = { ok: false, error: "벌점을 적용하지 못했습니다." };
+    let result = { ok: false, error: "벌금을 적용하지 못했습니다." };
     setWallets((prev) => {
       const targetWallet = prev[targetUserId] || makePenaltyWallet(fallbackBalance);
       const nextWallet = {
@@ -240,7 +348,7 @@ export function usePointWallet(session) {
             id: `penalty-${Date.now()}`,
             type: "penalty",
             amount: -value,
-            label: "익명 게시판 벌점",
+            label: "익명 게시판 벌금",
             createdAt: new Date().toISOString(),
           },
           ...(targetWallet.transactions || []),
@@ -305,8 +413,19 @@ export function usePointWallet(session) {
       result = { ok: true, wallet: nextVoterWallet, targetWallet: nextTargetWallet, delta };
       return next;
     });
+    if (result?.ok) {
+      syncPointTransaction({
+        amount: -POINT_RULES.virtuePointCost,
+        type: "virtue_spend",
+        description: delta > 0 ? "선행 포인트 올리기" : "선행 포인트 내리기",
+        refType: "virtue_vote",
+        refId: `${targetUserId}-${date}`,
+        metadata: { targetUserId, delta },
+        idempotencyKey: `virtue-${userId}-${targetUserId}-${date}`,
+      });
+    }
     return result;
-  }, [session, userId, wallets]);
+  }, [session, syncPointTransaction, userId, wallets]);
 
   const wallet = useMemo(
     () => (userId ? wallets[userId] || makeSignupWallet(session) : null),

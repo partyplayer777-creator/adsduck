@@ -59,6 +59,14 @@ export default function Footer({ onNavigate, onScrollToContests, darkMode }) {
               </li>
               <li>
                 <button
+                  onClick={() => onNavigate?.("lectures")}
+                  className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors bg-transparent border-none cursor-pointer p-0 text-sm text-gray-400 dark:text-gray-500 font-normal"
+                >
+                  AI강의레터
+                </button>
+              </li>
+              <li>
+                <button
                   onClick={() => onNavigate?.("messages")}
                   className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors bg-transparent border-none cursor-pointer p-0 text-sm text-gray-400 dark:text-gray-500 font-normal"
                 >
@@ -122,6 +130,14 @@ export default function Footer({ onNavigate, onScrollToContests, darkMode }) {
                   포인트 운영정책
                 </button>
               </li>
+              <li>
+                <button
+                  onClick={() => onNavigate?.("terms", { section: "lectures" })}
+                  className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors bg-transparent border-none cursor-pointer p-0 text-sm text-gray-400 dark:text-gray-500 font-normal text-left"
+                >
+                  AI강의레터 정책
+                </button>
+              </li>
               <li className="flex items-center gap-2">
                 <span className="text-gray-300 dark:text-gray-600">개인정보처리방침</span>
                 <span className="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 px-1.5 py-0.5 rounded font-medium">준비중</span>
@@ -159,14 +175,36 @@ export default function Footer({ onNavigate, onScrollToContests, darkMode }) {
           </div>
         </div>
 
-        {/* Bottom */}
-        <div className="border-t border-gray-100 dark:border-gray-800 mt-10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-gray-300 dark:text-gray-600">
-            &copy; 2026 AdsDuck. All rights reserved.
-          </p>
-          <p className="text-xs text-gray-300 dark:text-gray-700">
-            Made with care for creators
-          </p>
+        <div className="border-t border-gray-100 dark:border-gray-800 mt-10 pt-6 space-y-5">
+          <div className="max-w-3xl space-y-1.5 text-xs leading-relaxed text-gray-400 dark:text-gray-600">
+            <p className="flex flex-wrap gap-x-4 gap-y-1">
+              <span>
+                <span className="font-medium text-gray-500 dark:text-gray-500">사업자등록번호</span>{" "}
+                837-21-02410
+              </span>
+              <span>
+                <span className="font-medium text-gray-500 dark:text-gray-500">대표</span>{" "}
+                김태엽
+              </span>
+              <span>
+                <span className="font-medium text-gray-500 dark:text-gray-500">전화</span>{" "}
+                010-8129-2242
+              </span>
+            </p>
+            <p>
+              <span className="font-medium text-gray-500 dark:text-gray-500">주소</span>{" "}
+              부산광역시 부전로 21-2 디엔디파인빌 402호
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <p className="text-sm text-gray-300 dark:text-gray-600">
+              &copy; 2026 AdsDuck. All rights reserved.
+            </p>
+            <p className="text-xs text-gray-300 dark:text-gray-700">
+              Made with care for creators
+            </p>
+          </div>
         </div>
       </div>
     </footer>

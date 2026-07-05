@@ -247,11 +247,22 @@ html.no-transition * {
 
 /* Mobile menu overlay */
 .mobile-menu-overlay {
-  animation: fade-in 0.2s ease-out;
+  position: fixed;
+  inset: 0;
+  background-color: #ffffff;
+  opacity: 1;
 }
 
 .mobile-menu-panel {
-  animation: slide-in-right 0.3s ease-out;
+  position: fixed;
+  inset: 0;
+  background-color: #ffffff;
+  opacity: 1;
+}
+
+.dark .mobile-menu-overlay,
+.dark .mobile-menu-panel {
+  background-color: #111827;
 }
 
 /* Progress bar */
@@ -278,4 +289,14 @@ html.no-transition * {
 }
 .dark .notion-btn:hover {
   background: linear-gradient(135deg, #f3f4f6, #ffffff);
+}
+
+@media print {
+  .lecture-protected-content {
+    display: none !important;
+  }
+
+  .lecture-protected-content::after {
+    content: "AI lecture paid content cannot be printed.";
+  }
 }

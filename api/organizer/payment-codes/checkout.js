@@ -2,7 +2,7 @@ import { verifyAccessToken } from "../../_auth.js";
 import { createCheckoutSession, getRequestOrigin } from "../../_paymentKit.js";
 import { getOrganizerPaymentCode, sendError, sendJson } from "./_shared.js";
 
-function optionalAuth(req) {
+async function optionalAuth(req) {
   const header = req.headers.authorization || "";
   const [scheme, token] = header.split(" ");
   if (scheme !== "Bearer" || !token) return null;
@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     const origin = getRequestOrigin(req);
     const checkout = await createCheckoutSession({
       productId: paymentCode.productId,
-      user: optionalAuth(req),
+      user: await optionalAuth(req),
       returnUrl: `${origin}/payment-return?organizer=1&code=${encodeURIComponent(paymentCode.code)}`,
       context: {
         paymentKind: "organizer-contest",

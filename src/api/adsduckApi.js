@@ -109,7 +109,10 @@ async function fetchJson(path, options = {}) {
   const data = text ? JSON.parse(text) : null;
 
   if (!response.ok) {
-    throw new Error(data?.error || data?.message || "Request failed.");
+    const error = new Error(data?.error || data?.message || "Request failed.");
+    error.status = response.status;
+    error.data = data;
+    throw error;
   }
 
   return data;
@@ -122,6 +125,10 @@ async function fetchBoardJson(path, options = {}) {
 function authHeaders(authSession) {
   const token = authSession?.accessToken;
   return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function makeClientIdempotencyKey(prefix) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 export async function getContestLeaderboard(contestId) {
@@ -385,4 +392,194 @@ export async function uploadBoardMediaFile(file, authSession) {
     bucket: sign.bucket,
     url: sign.publicUrl,
   };
+}
+
+export async function getPointWallet(authSession) {
+  return fetchJson("/api/points/wallet", {
+    headers: authHeaders(authSession),
+  });
+}
+
+export async function chargeServerPoints(amount, authSession) {
+  return fetchJson("/api/points/charge", {
+    method: "POST",
+    headers: {
+      ...authHeaders(authSession),
+      "Idempotency-Key": makeClientIdempotencyKey(`point-charge-${amount}`),
+    },
+    body: JSON.stringify({ amount }),
+  });
+}
+
+export async function recordPointTransaction(payload, authSession) {
+  const amount = Math.trunc(Number(payload?.amount || 0));
+  const type = String(payload?.type || "adjustment");
+  const idempotencyKey = payload?.idempotencyKey || makeClientIdempotencyKey(`point-${type}-${Math.abs(amount)}`);
+  return fetchJson("/api/points/transaction", {
+    method: "POST",
+    headers: {
+      ...authHeaders(authSession),
+      "Idempotency-Key": idempotencyKey,
+    },
+    body: JSON.stringify({
+      amount,
+      type,
+      description: payload?.description,
+      refType: payload?.refType,
+      refId: payload?.refId,
+      metadata: payload?.metadata || {},
+    }),
+  });
+}
+
+export async function getLecturePosts(authSession) {
+  return fetchJson("/api/lecture/posts", {
+    headers: authHeaders(authSession),
+  });
+}
+
+export async function getLecturePost(postId, authSession) {
+  return fetchJson(`/api/lecture/posts/${encodeURIComponent(postId)}`, {
+    headers: authHeaders(authSession),
+  });
+}
+
+export async function readLecturePost(postId, authSession, idempotencyKey = "") {
+  return fetchJson(`/api/lecture/posts/${encodeURIComponent(postId)}/read`, {
+    method: "POST",
+    headers: {
+      ...authHeaders(authSession),
+      "Idempotency-Key": idempotencyKey || makeClientIdempotencyKey(`lecture-read-${postId}`),
+    },
+    body: JSON.stringify({}),
+  });
+}
+
+export async function subscribeLecturePost(postId, authSession, idempotencyKey = "") {
+  return fetchJson(`/api/lecture/posts/${encodeURIComponent(postId)}/subscribe`, {
+    method: "POST",
+    headers: {
+      ...authHeaders(authSession),
+      "Idempotency-Key": idempotencyKey || makeClientIdempotencyKey(`lecture-subscribe-${postId}`),
+    },
+    body: JSON.stringify({}),
+  });
+}
+
+export async function getLectureMemberships(authSession) {
+  return fetchJson("/api/lecture/memberships", {
+    headers: authHeaders(authSession),
+  });
+}
+
+export async function purchaseLectureMembership(planKey, authSession, idempotencyKey = "") {
+  return fetchJson("/api/lecture/memberships", {
+    method: "POST",
+    headers: {
+      ...authHeaders(authSession),
+      "Idempotency-Key": idempotencyKey || makeClientIdempotencyKey(`lecture-membership-${planKey}`),
+    },
+    body: JSON.stringify({ planKey }),
+  });
+}
+
+export async function getLectureAuthorEarnings(authSession) {
+  return fetchJson("/api/lecture/author/earnings", {
+    headers: authHeaders(authSession),
+  });
+}
+
+export async function getLectureAuthorSettlements(authSession) {
+  return fetchJson("/api/lecture/author/settlements", {
+    headers: authHeaders(authSession),
+  });
+}
+
+export async function requestLectureAuthorSettlement(note, authSession) {
+  return fetchJson("/api/lecture/author/settlements", {
+    method: "POST",
+    headers: authHeaders(authSession),
+    body: JSON.stringify({ note }),
+  });
+}
+
+export async function createLectureReport(payload, authSession) {
+  return fetchJson("/api/lecture/reports", {
+    method: "POST",
+    headers: authHeaders(authSession),
+    body: JSON.stringify(payload),
+  });
+}
+
+function adminHeaders(adminSecret) {
+  return adminSecret ? { "X-Lecture-Admin-Secret": adminSecret } : {};
+}
+
+export async function getLectureAdminSummary(adminSecret) {
+  return fetchJson("/api/lecture/admin/summary", {
+    headers: adminHeaders(adminSecret),
+  });
+}
+
+export async function createLectureAdminPost(payload, adminSecret) {
+  return fetchJson("/api/lecture/admin/posts", {
+    method: "POST",
+    headers: adminHeaders(adminSecret),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateLectureAdminPost(postId, payload, adminSecret) {
+  return fetchJson(`/api/lecture/admin/posts/${encodeURIComponent(postId)}`, {
+    method: "PUT",
+    headers: adminHeaders(adminSecret),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteLectureAdminPost(postId, adminSecret) {
+  return fetchJson(`/api/lecture/admin/posts/${encodeURIComponent(postId)}`, {
+    method: "DELETE",
+    headers: adminHeaders(adminSecret),
+  });
+}
+
+export async function refundLectureTransaction(payload, adminSecret) {
+  return fetchJson("/api/lecture/admin/refund", {
+    method: "POST",
+    headers: adminHeaders(adminSecret),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateLectureAccess(payload, adminSecret) {
+  return fetchJson("/api/lecture/admin/access", {
+    method: "POST",
+    headers: adminHeaders(adminSecret),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateLectureReport(reportId, payload, adminSecret) {
+  return fetchJson(`/api/lecture/admin/reports/${encodeURIComponent(reportId)}`, {
+    method: "PATCH",
+    headers: adminHeaders(adminSecret),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function settleLectureAuthorRequest(requestId, payload, adminSecret) {
+  return fetchJson(`/api/lecture/admin/settlements/${encodeURIComponent(requestId)}`, {
+    method: "POST",
+    headers: adminHeaders(adminSecret),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateLectureAuthorPermission(payload, adminSecret) {
+  return fetchJson("/api/lecture/admin/authors", {
+    method: "POST",
+    headers: adminHeaders(adminSecret),
+    body: JSON.stringify(payload),
+  });
 }

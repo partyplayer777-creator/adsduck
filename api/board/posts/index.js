@@ -48,7 +48,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === "POST") {
-      const authPayload = requireAuth(req);
+      const authPayload = await requireAuth(req);
       const payload = normalizePostPayload(req.body || {}, authPayload);
       const row = {
         id: payload.id,

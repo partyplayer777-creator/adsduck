@@ -167,10 +167,6 @@ function getCommentInputId(postId) {
   return `board-comment-input-${postId}`;
 }
 
-function getReplyInputId(commentId) {
-  return `board-reply-input-${commentId}`;
-}
-
 function getHourlyPenaltyUsed(userId) {
   if (!userId) return 0;
   const ledger = readPenaltyLedger();
@@ -261,10 +257,6 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
   );
 
   useEffect(() => {
-    setActiveReplyComposerId("");
-  }, [activeBoard, selectedPostId]);
-
-  useEffect(() => {
     let active = true;
 
     getBoardPosts()
@@ -347,14 +339,14 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
   const focusCommentComposer = (postId) => {
     if (!requireActivity()) return;
     setActiveReplyComposerId("");
-    focusComposerInput(getCommentInputId(postId));
+    setTimeout(() => focusComposerInput(getCommentInputId(postId)), 0);
   };
 
-  const focusReplyComposer = (commentId) => {
+  const focusReplyComposer = (postId, commentId) => {
     if (!requireActivity()) return;
     setOpenActionKey("");
-    setActiveReplyComposerId(commentId);
-    setTimeout(() => focusComposerInput(getReplyInputId(commentId)), 0);
+    setActiveReplyComposerId((currentId) => (currentId === commentId ? "" : commentId));
+    setTimeout(() => focusComposerInput(getCommentInputId(postId)), 0);
   };
 
   const addPenaltyLedger = (amount) => {
@@ -618,6 +610,17 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
     setActiveReplyComposerId("");
     pointAccount?.addPoints(POINT_RULES.commentReward, "대댓글 작성 보상");
     onToast?.(`대댓글 보상 ${formatPoint(POINT_RULES.commentReward)} 지급`);
+  };
+
+  const handleComposerSubmit = (post) => {
+    const activeReplyComment = (post.comments || []).find((comment) => comment.id === activeReplyComposerId);
+
+    if (activeReplyComment) {
+      handleReply(post.id, activeReplyComment.id, post.board);
+      return;
+    }
+
+    handleComment(post.id);
   };
 
   const applyPenaltyToContent = (target, nextBalance, amount) => {
@@ -1127,6 +1130,11 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
 
   const renderPostDetail = (post) => {
     const postTarget = makePostTarget(post);
+    const activeReplyComment = (post.comments || []).find((comment) => comment.id === activeReplyComposerId);
+    const activeReplyDraftKey = activeReplyComment ? `reply:${activeReplyComment.id}` : "";
+    const composerValue = activeReplyComment ? (replyDrafts[activeReplyDraftKey] || "") : (comments[post.id] || "");
+    const composerPlaceholder = activeReplyComment ? "대댓글을 입력하세요." : "댓글을 입력하세요.";
+    const composerReward = POINT_RULES.commentReward;
 
     return (
       <article className="rounded-md border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
@@ -1185,7 +1193,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
                   <div key={comment.id} className="border-t border-gray-100 py-2 first:border-t-0 dark:border-gray-800">
                     {renderUserLine({ ...comment, authorId: commentAuthorId }, post.targetBalancePreview, {
                       actions: [
-                        { label: "대댓글 달기", onClick: () => focusReplyComposer(comment.id) },
+                        { label: "대댓글 달기", onClick: () => focusReplyComposer(post.id, comment.id) },
                       ],
                       trustUpdatedAt: true,
                     })}
@@ -1202,7 +1210,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
                             <div key={reply.id} className="py-1">
                               {renderUserLine({ ...reply, authorId: replyAuthorId }, commentTarget.balance, {
                                 actions: [
-                                  { label: "대댓글 달기", onClick: () => focusReplyComposer(comment.id) },
+                                  { label: "대댓글 달기", onClick: () => focusReplyComposer(post.id, comment.id) },
                                 ],
                                 trustUpdatedAt: true,
                               })}
@@ -1214,26 +1222,6 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
                       </div>
                     )}
 
-                    {activeReplyComposerId === comment.id && (
-                      <div className="mt-2 flex gap-2">
-                        <input
-                          id={getReplyInputId(comment.id)}
-                          value={replyDrafts[`reply:${comment.id}`] || ""}
-                          onChange={(event) => setReplyDrafts((prev) => ({ ...prev, [`reply:${comment.id}`]: event.target.value }))}
-                          className="h-9 min-w-0 flex-1 rounded-md border border-gray-200 bg-white px-3 text-xs text-gray-900 outline-none focus:ring-2 focus:ring-amber-400 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-                          placeholder="대댓글 작성"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleReply(post.id, comment.id, post.board)}
-                          className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md border-none bg-gray-900 text-white dark:bg-white dark:text-gray-950"
-                          title={`대댓글 작성 ${formatPoint(POINT_RULES.commentReward)} 보상`}
-                          aria-label={`대댓글 작성 ${formatPoint(POINT_RULES.commentReward)} 보상`}
-                        >
-                          <BoardIcon name="send" />
-                        </button>
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -1241,19 +1229,39 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
           )}
 
           <div className="sticky bottom-0 z-20 -mx-3 flex gap-2 border-t border-gray-200 bg-white/95 px-3 py-2 backdrop-blur dark:border-gray-800 dark:bg-gray-900/95 sm:-mx-4 sm:px-4">
+            {activeReplyComment && (
+              <button
+                type="button"
+                onClick={() => setActiveReplyComposerId("")}
+                className="inline-flex h-10 flex-shrink-0 items-center justify-center rounded-md border border-amber-300 bg-amber-50 px-3 text-xs font-semibold text-amber-700 dark:border-amber-500/50 dark:bg-amber-500/10 dark:text-amber-200"
+              >
+                취소
+              </button>
+            )}
             <input
               id={getCommentInputId(post.id)}
-              value={comments[post.id] || ""}
-              onChange={(event) => setComments((prev) => ({ ...prev, [post.id]: event.target.value }))}
-              className="h-10 min-w-0 flex-1 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-amber-400 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-              placeholder="댓글 작성"
+              value={composerValue}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                if (activeReplyComment) {
+                  setReplyDrafts((prev) => ({ ...prev, [activeReplyDraftKey]: nextValue }));
+                  return;
+                }
+                setComments((prev) => ({ ...prev, [post.id]: nextValue }));
+              }}
+              className={`h-10 min-w-0 flex-1 rounded-md border px-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-amber-400 dark:text-gray-100 ${
+                activeReplyComment
+                  ? "border-amber-300 bg-amber-50/70 dark:border-amber-500/50 dark:bg-amber-500/10"
+                  : "border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-950"
+              }`}
+              placeholder={composerPlaceholder}
             />
             <button
               type="button"
-              onClick={() => handleComment(post.id)}
+              onClick={() => handleComposerSubmit(post)}
               className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md border-none bg-gray-950 text-white dark:bg-white dark:text-gray-950"
-              title={`댓글 작성 ${formatPoint(POINT_RULES.commentReward)} 보상`}
-              aria-label={`댓글 작성 ${formatPoint(POINT_RULES.commentReward)} 보상`}
+              title={`${activeReplyComment ? "대댓글 작성" : "댓글 작성"} ${formatPoint(composerReward)} 보상`}
+              aria-label={`${activeReplyComment ? "대댓글 작성" : "댓글 작성"} ${formatPoint(composerReward)} 보상`}
             >
               <BoardIcon name="send" />
             </button>
@@ -1294,6 +1302,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
                     onClick={() => {
                       setActiveBoard(tab.key);
                       setSelectedPostId("");
+                      setActiveReplyComposerId("");
                     }}
                     className={`h-8 flex-shrink-0 rounded-md border px-3 text-xs font-bold transition ${
                       activeBoard === tab.key
@@ -1492,6 +1501,7 @@ export default function Board({ authSession, pointAccount, onRequireLogin, onToa
                       setComposerOpen(false);
                       setOpenActionKey("");
                       setSelectedPostId(post.id);
+                      setActiveReplyComposerId("");
                     }}
                     className="block w-full border-none bg-transparent px-3 py-3 text-left transition hover:bg-gray-50 dark:hover:bg-gray-900/70 sm:px-4"
                   >

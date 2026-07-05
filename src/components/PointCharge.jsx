@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { chargeServerPoints, getPointWallet } from "../api/adsduckApi";
 
 const PRESET_AMOUNTS = [1000, 5000, 10000, 30000, 50000];
 
@@ -21,12 +22,46 @@ function WalletIcon({ className = "h-4 w-4" }) {
 export default function PointCharge({ authSession, pointAccount, onRequireLogin, onToast, onOpenTerms }) {
   const [amount, setAmount] = useState("10000");
   const [loading, setLoading] = useState(false);
+  const [serverWallet, setServerWallet] = useState(null);
+  const [serverTransactions, setServerTransactions] = useState([]);
   const user = authSession?.user || null;
-  const wallet = pointAccount?.wallet || null;
+  const wallet = serverWallet || pointAccount?.wallet || null;
 
   const normalizedAmount = useMemo(() => Math.floor(Number(amount || 0)), [amount]);
   const validAmount = Number.isFinite(normalizedAmount) && normalizedAmount >= 1000;
-  const recentTransactions = wallet?.transactions?.slice(0, 5) || [];
+  const recentTransactions = serverTransactions.length > 0
+    ? serverTransactions.slice(0, 5).map((item) => ({
+        id: item.id,
+        amount: item.amount,
+        label: item.description || item.type,
+      }))
+    : wallet?.transactions?.slice(0, 5) || [];
+
+  useEffect(() => {
+    if (!user) {
+      setServerWallet(null);
+      setServerTransactions([]);
+      return undefined;
+    }
+
+    let cancelled = false;
+    getPointWallet(authSession)
+      .then((data) => {
+        if (cancelled) return;
+        setServerWallet(data.wallet || null);
+        setServerTransactions(data.transactions || []);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setServerWallet(null);
+          setServerTransactions([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authSession, user]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -40,8 +75,18 @@ export default function PointCharge({ authSession, pointAccount, onRequireLogin,
     }
 
     setLoading(true);
-    window.alert(`결제 모듈은 연동 후 적용 예정입니다.\n\n선택 금액: ${formatKrw(normalizedAmount)}\n충전 예정 포인트: ${formatPoint(normalizedAmount)}`);
-    setLoading(false);
+    try {
+      const data = await chargeServerPoints(normalizedAmount, authSession);
+      setServerWallet(data.wallet || null);
+      const walletData = await getPointWallet(authSession);
+      setServerWallet(walletData.wallet || null);
+      setServerTransactions(walletData.transactions || []);
+      onToast?.(`${formatKrw(normalizedAmount)} 결제가 반영되어 ${formatPoint(normalizedAmount)}가 충전되었습니다.`);
+    } catch (error) {
+      onToast?.(error?.message || "포인트 충전에 실패했습니다.", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

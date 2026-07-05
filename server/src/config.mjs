@@ -4,6 +4,21 @@ function trimTrailingSlash(value) {
   return String(value || "").trim().replace(/\/$/, "");
 }
 
+function uniqueNonEmpty(values) {
+  return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
+}
+
+const authTokenSecrets = uniqueNonEmpty([
+  process.env.AUTH_ACCESS_TOKEN_SECRET,
+  process.env.SUPABASE_JWT_SECRET,
+  process.env.SUPABASE_AUTH_JWT_SECRET,
+  process.env.Lagacy_JWT_SECRET,
+  process.env.LEGACY_JWT_SECRET,
+  process.env.JWT_SECRET,
+  process.env.jwt_secret,
+  process.env.jwt_keys,
+]);
+
 export const config = {
   port: Number(process.env.PORT || 4100),
   publicBaseUrl: trimTrailingSlash(process.env.PUBLIC_BASE_URL || `http://localhost:${process.env.PORT || 4100}`),
@@ -11,13 +26,8 @@ export const config = {
   supabaseUrl: trimTrailingSlash(process.env.SUPABASE_URL || process.env.project_URL || ""),
   supabaseServiceRoleKey: String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.service_role || "").trim(),
   auth: {
-    accessTokenSecret: String(
-      process.env.AUTH_ACCESS_TOKEN_SECRET ||
-      process.env.Lagacy_JWT_SECRET ||
-      process.env.LEGACY_JWT_SECRET ||
-      process.env.jwt_keys ||
-      ""
-    ).trim(),
+    accessTokenSecret: authTokenSecrets[0] || "",
+    tokenSecrets: authTokenSecrets,
     issuer: process.env.AUTH_TOKEN_ISSUER || "",
     clientId: process.env.AUTH_CLIENT_ID || "adsduck",
   },
@@ -26,6 +36,7 @@ export const config = {
     projectKey: process.env.PAYMENT_KIT_PROJECT_KEY || "adsduck",
   },
   organizerPaymentCodeAdminSecret: process.env.ORGANIZER_PAYMENT_CODE_ADMIN_SECRET || "",
+  lectureAdminSecret: process.env.LECTURE_ADMIN_SECRET || "",
   businessVerification: {
     baseUrl: trimTrailingSlash(process.env.NTS_BUSINESS_API_BASE_URL || "https://api.odcloud.kr"),
     serviceKey: process.env.NTS_BUSINESS_SERVICE_KEY || "",
@@ -42,6 +53,8 @@ export function validateConfig() {
   const missing = [];
   if (!config.supabaseUrl) missing.push("SUPABASE_URL");
   if (!config.supabaseServiceRoleKey) missing.push("SUPABASE_SERVICE_ROLE_KEY");
-  if (!config.auth.accessTokenSecret) missing.push("AUTH_ACCESS_TOKEN_SECRET");
+  if (config.auth.tokenSecrets.length === 0 && !config.supabaseUrl) {
+    missing.push("SUPABASE_URL or SUPABASE_JWT_SECRET");
+  }
   return missing;
 }
