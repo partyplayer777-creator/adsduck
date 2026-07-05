@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 const PROVIDERS = [
   { provider: "google", label: "Google로 계속", icon: GoogleIcon, tone: "border-gray-200 bg-white text-gray-800" },
@@ -50,12 +50,10 @@ export default function AuthDialog({
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
   const [localError, setLocalError] = useState("");
-  const autoSignupStartedRef = useRef("");
   const isSignup = mode === "signup";
   const providerIds = enabledProviders.length > 0 ? enabledProviders : (isSignup ? ["google"] : []);
   const visibleProviders = PROVIDERS.filter((item) => providerIds.includes(item.provider));
   const showEmailForm = !isSignup;
-  const autoSignupProvider = isSignup && visibleProviders.length === 1 ? visibleProviders[0].provider : null;
 
   const title = isSignup ? "회원가입" : "로그인";
   const subtitle = isSignup
@@ -108,41 +106,7 @@ export default function AuthDialog({
     onClose?.();
   };
 
-  useEffect(() => {
-    if (!open) {
-      autoSignupStartedRef.current = "";
-      return;
-    }
-    if (!autoSignupProvider) return;
-
-    const autoSignupKey = `${mode}:${autoSignupProvider}`;
-    if (autoSignupStartedRef.current === autoSignupKey) return;
-    autoSignupStartedRef.current = autoSignupKey;
-
-    let active = true;
-    Promise.resolve(onProviderLogin?.(autoSignupProvider, mode, { marketingConsent: false }))
-      .then((started) => {
-        if (!active) return;
-        if (started === false) {
-          autoSignupStartedRef.current = "";
-          setLocalError("소셜 로그인을 시작하지 못했습니다.");
-          return;
-        }
-        setLocalError("");
-      })
-      .catch((error) => {
-        if (!active) return;
-        autoSignupStartedRef.current = "";
-        setLocalError(error?.message || "소셜 로그인을 시작하지 못했습니다.");
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [autoSignupProvider, mode, onProviderLogin, open]);
-
   if (!open) return null;
-  if (autoSignupProvider && !localError && !error) return null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-950/55 px-4 backdrop-blur-sm">
