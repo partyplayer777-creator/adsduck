@@ -52,7 +52,8 @@ export default function AuthDialog({
   const [localError, setLocalError] = useState("");
   const autoSignupStartedRef = useRef("");
   const isSignup = mode === "signup";
-  const visibleProviders = PROVIDERS.filter((item) => enabledProviders.includes(item.provider));
+  const providerIds = enabledProviders.length > 0 ? enabledProviders : (isSignup ? ["google"] : []);
+  const visibleProviders = PROVIDERS.filter((item) => providerIds.includes(item.provider));
   const showEmailForm = !isSignup;
   const autoSignupProvider = isSignup && visibleProviders.length === 1 ? visibleProviders[0].provider : null;
 
