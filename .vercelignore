@@ -2,6 +2,7 @@ node_modules
 dist
 .git
 .vercel-jins-backup
+supabase/.temp
 *.log
 *.stackdump
 390x844-*.png
