@@ -51,6 +51,8 @@
     }
   ],
   "eligibility_notice": "애즈덕과 불멍키우기의 로그인 계정이 동일해야 이벤트 참여가 가능합니다.",
+  "winner_verification_notice": "수상한 작품에 한해서, 주최측에서 본인 인증 절차에 대해서 안내를 드리고 요청 할 수 있습니다.",
+  "official_contact_notice": "주최측에서는 partyplayer777@gmail.com으로 연락을 드릴 예정입니다. 이외의 연락 수단은 피싱일 수 있으니 주의하시기 바랍니다.",
   "accepted_platforms": ["youtube"],
   "assets": {
     "pamphlet": "bulmung_contest_pamphlet_final.png"
